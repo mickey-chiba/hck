@@ -5,7 +5,7 @@ import processing.serial.*;
 AudioOutput out;
 Minim minim;
 InstrumentModule flute;
-
+MFCCAnalyzer mfccAnalyzer;
 // 各音の高さ
 String [] melody = {
   "C5", "C5", "G5", "G5", "A5", "A5", "G5","F5", "F5", "E5", "E5", "D5", "D5", "C5"
@@ -31,6 +31,7 @@ void setup(){
   minim = new Minim(this);
   out = minim.getLineOut(Minim.STEREO, 1024);
   pixelDensity(1);
+  mfccAnalyzer = new MFCCAnalyzer();
 }
 void draw(){
   background(0);
@@ -42,6 +43,9 @@ void draw(){
     line( i, 50 + out.left.get(i)*50, i+1, 50 + out.left.get(i+1)*50 );
     line( i, 150 + out.right.get(i)*50, i+1, 150 + out.right.get(i+1)*50 );
   }
+
+  // MFCC描画（追加）
+  mfccAnalyzer.draw();
 }
 
 void playSong() {
@@ -88,6 +92,11 @@ void keyPressed() {
   switch (key) {
     case 'a':
       playSong();
+      break;
+
+    //追加：'m' キーでMFCC解析を実行
+    case 'm':
+      mfccAnalyzer.analyze(out);
       break;
   }
 }
