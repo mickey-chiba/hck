@@ -1,8 +1,8 @@
 """
 compute_trumpet_mfcc.py
 ---------------------
-複数のフルートMP3音源からMFCCを計算し、
-「フルートらしいMFCC平均ベクトル」をJSONとして出力する。
+複数のトランペットMP3音源からMFCCを計算し、
+「トランペットらしいMFCC平均ベクトル」をJSONとして出力する。
 
 処理フロー:
   MP3 → WAV(ffmpeg) → ハミング窓 → DFT → メルフィルタ → log → DCT → MFCC
@@ -155,7 +155,7 @@ def main():
         print("有効なファイルがありません。終了します。")
         return
 
-    # ── grand mean（フルートらしいMFCC） ──
+    # ── grand mean（トランペットらしいMFCC） ──
     grand_mean = np.mean(all_file_means, axis=0)   # (13,)
     grand_std  = np.std(all_file_means,  axis=0)   # (13,) ばらつき参考値
 
@@ -169,7 +169,7 @@ def main():
         "sample_rate":   SAMPLE_RATE,
         "f_min":         F_MIN,
         "f_max":         F_MAX,
-        "grand_mean":    grand_mean.tolist(),   # ← これが「フルートらしいMFCC」
+        "grand_mean":    grand_mean.tolist(),   # ← これが「トランペットらしいMFCC」
         "grand_std":     grand_std.tolist(),    # ← ファイル間のばらつき
         "files":         file_results
     }
@@ -179,7 +179,7 @@ def main():
 
     print(f"\n=== 完了 ===")
     print(f"出力先: {OUTPUT_JSON}")
-    print(f"\n【フルートらしいMFCC平均ベクトル (grand_mean)】")
+    print(f"\n【トランペットらしいMFCC平均ベクトル (grand_mean)】")
     for i, v in enumerate(grand_mean):
         bar = "█" * int(abs(v) / 10)
         sign = "+" if v >= 0 else "-"
