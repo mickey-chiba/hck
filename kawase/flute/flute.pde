@@ -27,7 +27,7 @@ float[] amplitudes = {
 };
 
 void setup(){
-  size(400, 400);
+  size(600, 500);
   minim = new Minim(this);
   out = minim.getLineOut(Minim.STEREO, 1024);
   pixelDensity(1);
