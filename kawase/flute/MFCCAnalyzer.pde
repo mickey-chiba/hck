@@ -146,7 +146,7 @@ void draw() {
   int tableY = drawY + 14;
 
   fill(180);
-  textSize(10);
+  textSize(14);
   textAlign(LEFT);
   noStroke();
   text("coef   val    meaning", tableX, tableY);
@@ -164,7 +164,7 @@ void draw() {
     text(
       "c" + nf(k+1, 2) + "  " + nf(mfcc[k], 3, 1) + "  " + labels[k],
       tableX,
-      tableY + 16 + k * 14
+      tableY + 16 + k * 20
     );
   }
 
