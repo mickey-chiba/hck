@@ -11,6 +11,12 @@ class MFCCAnalyzer {
   float  fMin        = 80.0;     // メルフィルタの最低周波数 [Hz]
   float  fMax        = 8000.0;   // メルフィルタの最高周波数 [Hz]
 
+  // ★ここに追加：4楽器の参照MFCCベクトル
+  float[] FLUTE_REFERENCE        = { -31.891,  4.254, -6.496, -4.856, -2.536, -0.928,  0.806,  1.620,  1.759,  2.030, -2.750, -5.330, -0.970 };
+  float[] TRUMPET_REFERENCE      = { -26.425,  7.932, -3.136, -1.621, -2.259, -2.458, -2.232, -2.016, -1.765, -1.816, -2.001, -1.551, -0.168 };
+  float[] DOUBLE_BASS_REFERENCE  = { -31.206, 12.254,  5.792,  4.162,  2.809,  1.850,  1.334,  0.778,  0.158,  0.259,  0.153,  0.059,  0.091 };
+  float[] GLOCKENSPIEL_REFERENCE = { -48.173,  3.430, -1.275,  0.197,  3.776,  1.625,  0.359,  0.523, -0.370,  0.387,  0.527,  0.861,  0.000 };
+
   // --- 内部状態 ---
   float[] mfcc;                  // 計算結果 (numCoeffs個)
   boolean hasResult = false;     // 計算済みフラグ
@@ -43,67 +49,167 @@ class MFCCAnalyzer {
   }
 
   // 画面にMFCCバーを描画する
-  void draw() {
-    if (!hasResult) {
-      fill(180);
-      noStroke();
-      textSize(13);
-      text("Press 'm' to analyze MFCC", drawX + 10, drawY + 20);
-      return;
-    }
-
-    // タイトル
-    fill(255);
+  // 画面にMFCCバーを描画する
+void draw() {
+  if (!hasResult) {
+    fill(180);
     noStroke();
     textSize(13);
-    text("MFCC  (coefficients 1–" + numCoeffs + ")", drawX + 10, drawY + 16);
+    text("Press 'm' to analyze MFCC", drawX + 10, drawY + 20);
+    return;
+  }
 
-    // 各係数をバーグラフで表示
-    int barW   = 24;
-    int gap    = 4;
-    int baseY  = drawY + 120;  // バーの基準線 Y
+  // ── 係数ごとの意味ラベルと表示スケール ──────────────
+  // 各係数が主に何を表すかの説明
+  String[] labels = {
+    "音量感",    // c1:  全体エネルギー
+    "明暗",      // c2:  低域vs高域バランス
+    "丸み",      // c3:  スペクトル曲率
+    "硬さ",      // c4:  中域の形状
+    "鋭さ",      // c5:  高域ピーク
+    "倍音1",     // c6:  第1倍音強度
+    "倍音2",     // c7:  第2倍音強度
+    "倍音3",     // c8:  第3倍音強度
+    "倍音4",     // c9:  第4倍音強度
+    "倍音5",     // c10: 第5倍音強度
+    "倍音6",     // c11: 第6倍音強度
+    "倍音7",     // c12: 第7倍音強度
+    "倍音8"      // c13: 第8倍音強度
+  };
 
-    for (int k = 0; k < numCoeffs; k++) {
-      float val    = mfcc[k];
-      float scaled = constrain(val * 2.0, -100, 100);  // 表示スケール調整
-      int   x      = drawX + 10 + k * (barW + gap);
+  // 係数ごとに適切な表示スケールを設定（値の大きさが違うため）
+  float[] scales = {
+    1.5,   // c1: 値が大きい（-30〜-50付近）ので小さめに
+    8.0,   // c2: 値が中程度
+    6.0,   // c3
+    6.0,   // c4
+    10.0,  // c5: 値が小さい
+    15.0,  // c6
+    15.0,  // c7
+    15.0,  // c8
+    15.0,  // c9
+    15.0,  // c10
+    10.0,  // c11
+    8.0,   // c12
+    20.0   // c13
+  };
 
-      // バーの色: 正→青系, 負→赤系
-      if (val >= 0) {
-        fill(60, 160, 255, 200);
-      } else {
-        fill(255, 80, 80, 200);
-      }
-      noStroke();
+  // ── バーグラフ描画 ──────────────────────────────────
+  int barW  = 26;
+  int gap   = 6;
+  int baseY = drawY + 110;
 
-      // 正の値は上方向、負の値は下方向に描画
-      if (scaled >= 0) {
-        rect(x, baseY - scaled, barW, scaled);
-      } else {
-        rect(x, baseY, barW, -scaled);
-      }
+  // タイトル
+  fill(255);
+  noStroke();
+  textSize(12);
+  textAlign(LEFT);
+  text("MFCC 係数ビューア", drawX + 10, drawY + 14);
 
-      // 数値ラベル（係数番号）
-      fill(200);
-      textSize(10);
-      textAlign(CENTER);
-      text(k + 1, x + barW / 2, baseY + 14);
+  for (int k = 0; k < numCoeffs; k++) {
+    float val    = mfcc[k];
+    float scaled = constrain(val * scales[k], -90, 90);
+    int   x      = drawX + 10 + k * (barW + gap);
+
+    // バーの色：正→青系、負→赤系
+    if (val >= 0) {
+      fill(60, 160, 255, 210);
+    } else {
+      fill(255, 80, 80, 210);
+    }
+    noStroke();
+
+    if (scaled >= 0) {
+      rect(x, baseY - scaled, barW, scaled, 3);
+    } else {
+      rect(x, baseY, barW, -scaled, 3);
     }
 
-    // 基準線
-    stroke(100);
-    line(drawX + 10, baseY, drawX + 10 + numCoeffs * (barW + gap), baseY);
+    // 係数番号
+    fill(160);
+    textSize(9);
+    textAlign(CENTER);
+    text("c" + (k + 1), x + barW / 2, baseY + 12);
 
-    // 数値読み上げ (係数1～4)
-    fill(200);
-    noStroke();
+    // 意味ラベル（係数番号の下）
+    fill(220);
+    textSize(9);
+    text(labels[k], x + barW / 2, baseY + 24);
+  }
+
+  // 基準線
+  stroke(80);
+  line(drawX + 10, baseY, drawX + 10 + numCoeffs * (barW + gap), baseY);
+
+  // ── 数値テーブル（右側に縦並び） ───────────────────
+  int tableX = drawX + numCoeffs * (barW + gap) + 20;
+  int tableY = drawY + 14;
+
+  fill(180);
+  textSize(10);
+  textAlign(LEFT);
+  noStroke();
+  text("係数    値      意味", tableX, tableY);
+
+  for (int k = 0; k < numCoeffs; k++) {
+    // 値の大きさで色を変える
+    float absVal = abs(mfcc[k]);
+    if (absVal > 20) {
+      fill(255, 200, 80);   // 大きい値：黄色
+    } else if (absVal > 5) {
+      fill(180, 220, 255);  // 中程度：水色
+    } else {
+      fill(160, 160, 160);  // 小さい値：グレー
+    }
+    text(
+      "c" + nf(k+1, 2) + "  " + nf(mfcc[k], 3, 1) + "  " + labels[k],
+      tableX,
+      tableY + 16 + k * 14
+    );
+  }
+
+  // ── 楽器判定結果 ──────────────────────────────────
+  if (hasResult) {
+    int resultY = drawY + 230;
+    fill(255, 220, 50);
+    textSize(13);
     textAlign(LEFT);
-    textSize(11);
-    for (int k = 0; k < min(4, numCoeffs); k++) {
-      text("c" + (k+1) + ": " + nf(mfcc[k], 1, 2),
-           drawX + 10 + k * 90, drawY + 170);
+    noStroke();
+    text("→ Closest: " + closestInstrument(), drawX + 10, resultY);
+
+    // 4楽器の距離バー
+    String[] instLabels = { "Flute", "Trumpet", "D.Bass", "Glockn" };
+    float[]  dists = {
+      euclideanDist(FLUTE_REFERENCE),
+      euclideanDist(TRUMPET_REFERENCE),
+      euclideanDist(DOUBLE_BASS_REFERENCE),
+      euclideanDist(GLOCKENSPIEL_REFERENCE)
+    };
+    float maxDist = max(max(dists[0], dists[1]), max(dists[2], dists[3]));
+
+    for (int i = 0; i < 4; i++) {
+      int bx    = drawX + 10 + i * 110;
+      int by    = resultY + 16;
+      float ratio = dists[i] / max(maxDist, 1);
+      int barLen  = (int)(ratio * 90);
+
+      // 背景
+      fill(50);
+      noStroke();
+      rect(bx, by, 90, 10, 2);
+
+      // 距離バー（短いほど近い＝良い）
+      fill(lerpColor(color(80, 200, 80), color(200, 80, 80), ratio));
+      rect(bx, by, barLen, 10, 2);
+
+      fill(200);
+      textSize(9);
+      textAlign(LEFT);
+      text(instLabels[i], bx, by + 22);
+      text(nf(dists[i], 1, 1), bx, by + 33);
     }
   }
+}
 
   // ── 内部計算 ──────────────────────────────────────
 
@@ -207,5 +313,29 @@ class MFCCAnalyzer {
   // log10 ヘルパー
   float log10(float x) {
     return log(x) / log(10.0);
+  }
+
+  // 指定した参照ベクトルとのユークリッド距離を返す
+  float euclideanDist(float[] reference) {
+    float dist = 0;
+    for (int i = 0; i < numCoeffs; i++) {
+      float diff = mfcc[i] - reference[i];
+      dist += diff * diff;
+    }
+    return sqrt(dist);
+  }
+
+  // 4楽器との距離を計算して最も近い楽器名を返す
+  String closestInstrument() {
+    if (!hasResult) return "---";
+    float dF = euclideanDist(FLUTE_REFERENCE);
+    float dT = euclideanDist(TRUMPET_REFERENCE);
+    float dD = euclideanDist(DOUBLE_BASS_REFERENCE);
+    float dG = euclideanDist(GLOCKENSPIEL_REFERENCE);
+    float minD = min(min(dF, dT), min(dD, dG));
+    if      (minD == dF) return "Flute        dist:" + nf(dF,1,1);
+    else if (minD == dT) return "Trumpet      dist:" + nf(dT,1,1);
+    else if (minD == dD) return "Double Bass  dist:" + nf(dD,1,1);
+    else                 return "Glockenspiel dist:" + nf(dG,1,1);
   }
 }
