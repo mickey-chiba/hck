@@ -199,7 +199,50 @@ c6 〜 c13  : 倍音構造の細部（楽器ごとに最も差が出やすい）
 - c3〜c4 がほぼ 0 → スペクトルが比較的フラット
 
 ---
+### Step 1：`各楽器.pde` にMFCCAnalyzerを追加
 
+#### 1-1. グローバル変数の宣言（先頭に追加）
+
+```java
+// 既存コード
+AudioOutput out;
+Minim minim;
+InstrumentModule flute;
+
+// ★ 追加
+MFCCAnalyzer mfccAnalyzer;
+```
+
+#### 1-2. `setup()` 内で初期化（末尾に追加）
+
+```java
+void setup() {
+  size(700, 800);              // ★ 縦800px以上推奨
+  minim = new Minim(this);
+  out   = minim.getLineOut(Minim.STEREO, 1024);
+  pixelDensity(1);
+
+  mfccAnalyzer = new MFCCAnalyzer();  // ★ 追加
+}
+```
+
+#### 1-3. `draw()` 内で描画（末尾に追加）
+
+```java
+void draw() {
+  background(0);
+  stroke(255);
+
+  // 波形描画（既存）
+  for (int i = 0; i < out.bufferSize() - 1; i++) {
+    line(i, 50  + out.left.get(i)  * 50, i+1, 50  + out.left.get(i+1)  * 50);
+    line(i, 150 + out.right.get(i) * 50, i+1, 150 + out.right.get(i+1) * 50);
+  }
+
+  mfccAnalyzer.draw();  // ★ 追加
+}
+```
+---
 ## 参照データの作成方法（Python スクリプト）
 
 ### 使い方
