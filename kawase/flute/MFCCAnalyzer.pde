@@ -62,19 +62,19 @@ void draw() {
   // ── 係数ごとの意味ラベルと表示スケール ──────────────
   // 各係数が主に何を表すかの説明
   String[] labels = {
-    "音量感",    // c1:  全体エネルギー
-    "明暗",      // c2:  低域vs高域バランス
-    "丸み",      // c3:  スペクトル曲率
-    "硬さ",      // c4:  中域の形状
-    "鋭さ",      // c5:  高域ピーク
-    "倍音1",     // c6:  第1倍音強度
-    "倍音2",     // c7:  第2倍音強度
-    "倍音3",     // c8:  第3倍音強度
-    "倍音4",     // c9:  第4倍音強度
-    "倍音5",     // c10: 第5倍音強度
-    "倍音6",     // c11: 第6倍音強度
-    "倍音7",     // c12: 第7倍音強度
-    "倍音8"      // c13: 第8倍音強度
+    "Energy",    // c1:  全体エネルギー
+    "Bright",    // c2:  明暗（低域vs高域）
+    "Round",     // c3:  丸み
+    "Hard",      // c4:  硬さ
+    "Sharp",     // c5:  鋭さ
+    "Harm.1",    // c6:  第1倍音
+    "Harm.2",    // c7:  第2倍音
+    "Harm.3",    // c8:  第3倍音
+    "Harm.4",    // c9:  第4倍音
+    "Harm.5",    // c10: 第5倍音
+    "Harm.6",    // c11: 第6倍音
+    "Harm.7",    // c12: 第7倍音
+    "Harm.8"     // c13: 第8倍音
   };
 
   // 係数ごとに適切な表示スケールを設定（値の大きさが違うため）
@@ -104,7 +104,7 @@ void draw() {
   noStroke();
   textSize(12);
   textAlign(LEFT);
-  text("MFCC 係数ビューア", drawX + 10, drawY + 14);
+  text("MFCC Coefficient Viewer", drawX + 10, drawY + 14);
 
   for (int k = 0; k < numCoeffs; k++) {
     float val    = mfcc[k];
@@ -149,7 +149,7 @@ void draw() {
   textSize(10);
   textAlign(LEFT);
   noStroke();
-  text("係数    値      意味", tableX, tableY);
+  text("coef   val    meaning", tableX, tableY);
 
   for (int k = 0; k < numCoeffs; k++) {
     // 値の大きさで色を変える
