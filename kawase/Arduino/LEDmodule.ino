@@ -1,3 +1,5 @@
+#include <Arduino.h>
+
 class LEDmodule
 {
 private:
@@ -15,6 +17,7 @@ public:
 };
 
 int tempo = 120;
+int count = 0;
 LEDmodule led1(3);
 
 void setup()
@@ -24,38 +27,82 @@ void setup()
 
 void loop()
 {
+    u_int64_t millis_buf = 0;
+
+    while ((millis() - millis_buf) < 1000)
+    {
+        ;
+    }
+
+    millis_buf = millis();
+    Serial.println(millis_buf);
+
+    count++;
+    Serial.println(count);
     if (Serial.available() > 0)
     {
         tempo = Serial.parseInt();
     }
     if (tempo <= 30)
     {
-        led1.setBrightness(0);
-        delay(500);
+        if ((count % 50) == 0)
+        {
+            led1.setBrightness(0);
+        }
     }
-    else if (30 < tempo <= 45)
+    else if (30 < tempo && tempo <= 45)
     {
-        led1.setBrightness(51);
-        delay(500);
+        if ((count % 50) == 0)
+        {
+            led1.setBrightness(51);
+            if ((count % 100) == 0)
+            {
+                led1.setBrightness(0);
+            }
+        }
     }
-    else if (45 < tempo <= 60)
+    else if (45 < tempo && tempo <= 60)
     {
-        led1.setBrightness(102);
-        delay(500);
+        if ((count % 50) == 0)
+        {
+            led1.setBrightness(102);
+            if ((count % 100) == 0)
+            {
+                led1.setBrightness(0);
+            }
+        }
     }
-    else if (60 < tempo <= 75)
+    else if (60 < tempo && tempo <= 75)
     {
-        led1.setBrightness(153);
-        delay(500);
+        if ((count % 50) == 0)
+        {
+            led1.setBrightness(153);
+            if ((count % 100) == 0)
+            {
+                led1.setBrightness(0);
+            }
+        }
     }
-    else if (75 < tempo <= 90)
+    else if (75 < tempo && tempo <= 90)
     {
-        led1.setBrightness(204);
-        delay(500);
+        if ((count % 50) == 0)
+        {
+            led1.setBrightness(204);
+            if ((count % 100) == 0)
+            {
+                led1.setBrightness(0);
+            }
+        }
     }
-    else if (90 < tempo <= 120)
+    else if (90 < tempo && tempo <= 120)
     {
-        led1.setBrightness(255);
-        delay(500);
+        if ((count % 50) == 0)
+        {
+            led1.setBrightness(255);
+            if ((count % 100) == 0)
+            {
+                led1.setBrightness(0);
+            }
+        }
     }
 }
