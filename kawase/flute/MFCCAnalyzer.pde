@@ -264,14 +264,17 @@ void draw() {
     return log(x) / log(10.0);
   }
 
+// ----------------------変更点---------------------
+// 音量変化も評価に入れたい:i = 0/評価に入れたくない:i = 1
   float euclideanDist(float[] reference) {
     float dist = 0;
-    for (int i = 0; i < numCoeffs; i++) {
+    for (int i = 1; i < numCoeffs; i++) {
       float diff = mfcc[i] - reference[i];
       dist += diff * diff;
     }
     return sqrt(dist);
   }
+// ---------------------------------------------------
 
   String closestInstrument() {
     if (!hasResult) return "---";
