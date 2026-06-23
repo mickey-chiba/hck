@@ -23,7 +23,7 @@ float [] startTime = {
 
 // 各音の音量
 float[] amplitudes = {
-  1.0f, 0.9f, 1.0f, 0.9f, 1.0f, 0.9f, 1.0f, 1.0f, 0.9f, 1.0f, 0.9f, 1.0f, 0.9f, 1.0f
+  0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f
 };
 
 void setup(){
@@ -61,8 +61,8 @@ void playSong() {
     flute.baseFreq = Frequency.ofPitch(melody[i]).asHz();
     // flute.baseFreq = Frequency.ofPitch(pitch).asHz();
 
-    flute.harmonics = new float[] { 1.0, 1.0, 0.05, 0.01, 0.002 };
-    flute.cutoff = 1000.0;
+    flute.harmonics = new float[] { 0.9, 1.0, 0.05, 0.01, 0.002 };
+    flute.cutoff = 950.0;
     flute.res = 0.0;
     flute.filterMode = 0;
 
