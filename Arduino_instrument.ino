@@ -1,5 +1,40 @@
+#include <Arduino.h>
 #include <WiFiS3.h>
 #include <WiFiUdp.h>
+
+// LEDを制御するクラス（PWM制御でピンに接続されたLEDの明るさを管理）
+class LEDmodule
+{
+private:
+    int _pin;
+    int _bri;
+
+public:
+    // コンストラクタ: ピン番号を受け取り、輝度を0で初期化
+    LEDmodule(int pin) : _pin(pin), _bri(0) {}
+
+    // 輝度を0〜255の範囲で設定し、PWM出力する
+    void setBrightness(int bri)
+    {
+        _bri = bri;
+        analogWrite(_pin, _bri);
+    }
+};
+
+// テンポに応じた輝度を返す（BPMが高いほど明るい）
+int getBrightness(int bpm)
+{
+    if (bpm <= 30)       return 0;
+    else if (bpm <= 45)  return 51;
+    else if (bpm <= 60)  return 102;
+    else if (bpm <= 75)  return 153;
+    else if (bpm <= 90)  return 204;
+    else                 return 255;
+}
+
+unsigned long prevMillis = 0; // 前回のLED点滅切り替え時刻
+bool ledOn = false;           // LEDのON/OFF状態
+LEDmodule led1(3);            // ピン3番に接続されたLED
 
 const char ssid[] = "WiFi_bro_colstra";   //Wi-Fiネットワークの名称
 const char pass[] = "wf215nt109rt";       //Wi-Fiのパスワード
@@ -251,11 +286,20 @@ void loop() {
   if (playing && processingReady) {     //輪唱が終わったかつ配列の受信が終わったら実行
       melospeed(currentValue); // musicalTimeを毎回進める
       updateNotes();           // 音符タイミングを毎回判定する
-      // digitalWrite(LED_BUILTIN, HIGH);
-      // delay(10);
-      // digitalWrite(LED_BUILTIN, LOW);
+  }
 
-  } 
+  // BPM同期LED点滅（currentValueが有効な値のときだけ動作）
+  if (currentValue > 0) {
+      // BPMから1拍あたりの間隔（ms）を計算: 60000ms ÷ BPM
+      unsigned long interval = (unsigned long)(60000.0f / currentValue);
+      unsigned long now = millis();
+      if (now - prevMillis >= interval) {
+          prevMillis = now;
+          // LEDのON/OFFをトグル（切り替え）する
+          ledOn = !ledOn;
+          led1.setBrightness(ledOn ? getBrightness((int)currentValue) : 0);
+      }
+  }
 
 }
 
