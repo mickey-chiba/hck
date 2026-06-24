@@ -1,8 +1,5 @@
 #include <Arduino.h>
-#include <WiFiS3.h>
-#include <WiFiUdp.h>
 
-// LEDを制御するクラス（PWM制御でピンに接続されたLEDの明るさを管理）
 class LEDmodule
 {
 private:
@@ -10,10 +7,8 @@ private:
     int _bri;
 
 public:
-    // コンストラクタ: ピン番号を受け取り、輝度を0で初期化
     LEDmodule(int pin) : _pin(pin), _bri(0) {}
 
-    // 輝度を0〜255の範囲で設定し、PWM出力する
     void setBrightness(int bri)
     {
         _bri = bri;
@@ -21,82 +16,93 @@ public:
     }
 };
 
-int tempo = 120;              // テンポ（BPM）の初期値
-unsigned long prevMillis = 0; // 前回の点滅切り替え時刻（グローバルで保持）
-bool ledOn = false;           // LEDのON/OFF状態
-
+int tempo = 120;
+int count = 0;
 LEDmodule led1(3);
-
-const char ssid[] = "WiFi_bro_colstra"; // Wi-Fiネットワークの名称
-const char pass[] = "wf215nt109rt";     // Wi-Fiのパスワード
-
-WiFiUDP udp;
-
-const int port = 4286; // ポート番号
-
-// テンポに応じた輝度を返す（BPMが高いほど明るい）
-int getBrightness(int bpm)
-{
-    if (bpm <= 30)       return 0;
-    else if (bpm <= 45)  return 51;
-    else if (bpm <= 60)  return 102;
-    else if (bpm <= 75)  return 153;
-    else if (bpm <= 90)  return 204;
-    else                 return 255;
-}
 
 void setup()
 {
-    Serial.begin(115200);
-    pinMode(LED_BUILTIN, OUTPUT);
-
-    while (WiFi.begin(ssid, pass) != WL_CONNECTED)
-    { // ネットワークに接続されたか確認する処理
-        delay(1000);
-    }
-    delay(1000);
-    digitalWrite(LED_BUILTIN, HIGH);
-    delay(1000);
-    digitalWrite(LED_BUILTIN, LOW);
-
-    udp.begin(port); // UDPソケットを開始
+    Serial.begin(9600);
 }
 
 void loop()
 {
-    // UDPパケットが届いていたらテンポ（BPM）を受け取る
-    int packetSize = udp.parsePacket();
-    if (packetSize > 0)
+    u_int64_t millis_buf = 0;
+
+    while ((millis() - millis_buf) < 1000)
     {
-        char buf[8] = {0};
-        udp.read(buf, sizeof(buf) - 1); // パケットを読み取る
-        int received = atoi(buf);       // 文字列を整数に変換
-        if (received > 0)
-        {
-            tempo = received;
-            Serial.print("テンポ受信: ");
-            Serial.println(tempo);
-        }
+        ;
     }
 
-    // BPMから1拍あたりの間隔（ms）を計算: 60000ms ÷ BPM
-    unsigned long interval = 60000UL / (unsigned long)tempo;
+    millis_buf = millis();
+    Serial.println(millis_buf);
 
-    unsigned long now = millis();
-    // 前回の切り替えから interval ms 経過していたら点滅トグル
-    if (now - prevMillis >= interval)
+    count++;
+    Serial.println(count);
+    if (Serial.available() > 0)
     {
-        prevMillis = now;
-
-        // LEDのON/OFFをトグル（切り替え）する
-        ledOn = !ledOn;
-        if (ledOn)
-        {
-            led1.setBrightness(getBrightness(tempo));
-        }
-        else
+        tempo = Serial.parseInt();
+    }
+    if (tempo <= 30)
+    {
+        if ((count % 50) == 0)
         {
             led1.setBrightness(0);
+        }
+    }
+    else if (30 < tempo && tempo <= 45)
+    {
+        if ((count % 50) == 0)
+        {
+            led1.setBrightness(51);
+            if ((count % 100) == 0)
+            {
+                led1.setBrightness(0);
+            }
+        }
+    }
+    else if (45 < tempo && tempo <= 60)
+    {
+        if ((count % 50) == 0)
+        {
+            led1.setBrightness(102);
+            if ((count % 100) == 0)
+            {
+                led1.setBrightness(0);
+            }
+        }
+    }
+    else if (60 < tempo && tempo <= 75)
+    {
+        if ((count % 50) == 0)
+        {
+            led1.setBrightness(153);
+            if ((count % 100) == 0)
+            {
+                led1.setBrightness(0);
+            }
+        }
+    }
+    else if (75 < tempo && tempo <= 90)
+    {
+        if ((count % 50) == 0)
+        {
+            led1.setBrightness(204);
+            if ((count % 100) == 0)
+            {
+                led1.setBrightness(0);
+            }
+        }
+    }
+    else if (90 < tempo && tempo <= 120)
+    {
+        if ((count % 50) == 0)
+        {
+            led1.setBrightness(255);
+            if ((count % 100) == 0)
+            {
+                led1.setBrightness(0);
+            }
         }
     }
 }
