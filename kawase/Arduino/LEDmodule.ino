@@ -1,4 +1,6 @@
 #include <Arduino.h>
+#include <WiFiS3.h>
+#include <WiFiUdp.h>
 
 // LEDを制御するクラス（PWM制御でピンに接続されたLEDの明るさを管理）
 class LEDmodule
@@ -25,6 +27,13 @@ bool ledOn = false;           // LEDのON/OFF状態
 
 LEDmodule led1(3);
 
+const char ssid[] = "WiFi_bro_colstra"; // Wi-Fiネットワークの名称
+const char pass[] = "wf215nt109rt";     // Wi-Fiのパスワード
+
+WiFiUDP udp;
+
+const int port = 4286; // ポート番号
+
 // テンポに応じた輝度を返す（BPMが高いほど明るい）
 int getBrightness(int bpm)
 {
@@ -38,15 +47,30 @@ int getBrightness(int bpm)
 
 void setup()
 {
-    Serial.begin(9600);
+    Serial.begin(115200);
+    pinMode(LED_BUILTIN, OUTPUT);
+
+    while (WiFi.begin(ssid, pass) != WL_CONNECTED)
+    { // ネットワークに接続されたか確認する処理
+        delay(1000);
+    }
+    delay(1000);
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(1000);
+    digitalWrite(LED_BUILTIN, LOW);
+
+    udp.begin(port); // UDPソケットを開始
 }
 
 void loop()
 {
-    // シリアルからテンポ（BPM）を受け取る
-    if (Serial.available() > 0)
+    // UDPパケットが届いていたらテンポ（BPM）を受け取る
+    int packetSize = udp.parsePacket();
+    if (packetSize > 0)
     {
-        int received = Serial.parseInt();
+        char buf[8] = {0};
+        udp.read(buf, sizeof(buf) - 1); // パケットを読み取る
+        int received = atoi(buf);       // 文字列を整数に変換
         if (received > 0)
         {
             tempo = received;
