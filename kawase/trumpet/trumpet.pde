@@ -57,29 +57,33 @@ void playSong() {
     InstrumentConfig trumpet = new InstrumentConfig();
 
     trumpet.out = out;
-    // SAW波をメインに、TRIANGLEで角を取る（金管楽器の倍音構造に近い）
-    trumpet.waves = new String[] { "SAW", "TRIANGLE" };
+    // SINEをメインにSAWを少量添える（SAW比率が高いと電子音っぽくなる）
+    trumpet.waves = new String[] { "SINE", "SINE", "SAW" };
 
     // melody[i] の音階名を周波数に変換して、この音の基音にする
     trumpet.baseFreq = Frequency.ofPitch(melody[i]).asHz();
 
-    // 基音を強く、高次倍音は段階的に減衰（トランペットらしい倍音バランス）
-    trumpet.harmonics = new float[] { 1.0, 0.7, 0.5, 0.3 };
+    // 自然楽器に近い急速な倍音減衰（均等だと電子音になる）
+    trumpet.harmonics = new float[] { 1.0, 0.45, 0.2, 0.08 };
     trumpet.filterMode = 0;
-    trumpet.cutoff = 3500; // 金管らしい丸みを出すカットオフ（高いほど明るく、低いほどこもる）
-    trumpet.res = 0.15;    // 微量のレゾナンスで金属的な張りを加える
+    trumpet.cutoff = 3500; // 金管らしい丸みを出すカットオフ
+    trumpet.res = 0.1;
+
+    // FCO：フィルターのカットオフを揺らして音に有機的な動きを加える
+    trumpet.fcoRate   = 4.0;    // 4Hzで揺れる
+    trumpet.fcoAmount = 700.0;  // 揺れ幅700Hz
 
     // amplitudes[i] を使って、音ごとの強弱を変える
     trumpet.vol = 0.4;
 
-    trumpet.atk = 0.02;  // 速い立ち上がり（トランペットのタンギング）
-    trumpet.dec = 0.08;  // 短い減衰
-    trumpet.sus = 0.85;  // 高いサステイン（吹き続けている感）
-    trumpet.rel = 0.08;  // 短いリリース
+    trumpet.atk = 0.04;  // 少し長めのアタック（電子音は立ち上がりが速すぎる）
+    trumpet.dec = 0.1;
+    trumpet.sus = 0.8;
+    trumpet.rel = 0.15;  // 少し長めのリリースで余韻を自然に
 
     // ビブラート（5.5Hzで微かに揺れる金管奏者のビブラート）
     trumpet.vibratoRate  = 5.5;
-    trumpet.vibratoDepth = 4.0;
+    trumpet.vibratoDepth = 2.0;
 
     out.playNote(
       startTime[i],
