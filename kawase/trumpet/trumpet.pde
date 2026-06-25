@@ -57,29 +57,29 @@ void playSong() {
     InstrumentConfig trumpet = new InstrumentConfig();
 
     trumpet.out = out;
-    // SINEをメインにSAWを少量添える（SAW比率が高いと電子音っぽくなる）
-    trumpet.waves = new String[] { "SINE", "SINE", "SAW" };
+    // SAWをメインにSINEを添える（SAW比率が高いほど倍音が豊富で煌びやかになる）
+    trumpet.waves = new String[] { "SAW", "SAW", "SINE" };
 
     // melody[i] の音階名を周波数に変換して、この音の基音にする
     trumpet.baseFreq = Frequency.ofPitch(melody[i]).asHz();
 
-    // 自然楽器に近い急速な倍音減衰（均等だと電子音になる）
-    trumpet.harmonics = new float[] { 1.0, 0.45, 0.2, 0.08 };
+    // 2〜3次倍音を強調した煌びやかな倍音バランス（6次まで伸ばして輝きを増す）
+    trumpet.harmonics = new float[] { 0.7, 1.0, 0.9, 0.7, 0.5, 0.3 };
     trumpet.filterMode = 0;
-    trumpet.cutoff = 3500; // 金管らしい丸みを出すカットオフ
-    trumpet.res = 0.1;
+    trumpet.cutoff = 6000; // 明るさを保ちつつ適度に倍音を整形
+    trumpet.res = 0.35;    // レゾナンスを上げて金属的な張りと輝きを加える
 
     // FCO：フィルターのカットオフを揺らして音に有機的な動きを加える
     trumpet.fcoRate   = 4.0;    // 4Hzで揺れる
     trumpet.fcoAmount = 700.0;  // 揺れ幅700Hz
 
     // amplitudes[i] を使って、音ごとの強弱を変える
-    trumpet.vol = 0.4;
+    trumpet.vol = 0.35;
 
-    trumpet.atk = 0.04;  // 少し長めのアタック（電子音は立ち上がりが速すぎる）
+    trumpet.atk = 0.02;  // 短めのアタックでパリッとした立ち上がり
     trumpet.dec = 0.1;
     trumpet.sus = 0.8;
-    trumpet.rel = 0.15;  // 少し長めのリリースで余韻を自然に
+    trumpet.rel = 0.15;
 
     // ビブラート（5.5Hzで微かに揺れる金管奏者のビブラート）
     trumpet.vibratoRate  = 5.5;
