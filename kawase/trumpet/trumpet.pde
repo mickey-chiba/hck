@@ -13,7 +13,7 @@ String [] melody = {
 
 // 各音の長さ（拍）
 float [] duration = {
-  0.9f, 0.9f, 0.9f,0.9f, 0.9f, 0.9f,2.5f, 0.9f, 0.9f, 0.9f,0.9f, 0.9f, 0.9f, 0.9f
+  0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 1.0f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 1.0f
 };
 
 // 各音の開始位置
@@ -57,16 +57,16 @@ void playSong() {
     InstrumentConfig trumpet = new InstrumentConfig();
 
     trumpet.out = out;
-    trumpet.waves = new String[] { "TRIANGLE", "TRIANGLE", "TRIANGLE", "TRIANGLE"};
+    trumpet.waves = new String[] { "TRIANGLE", "TRIANGLE", "TRIANGLE", "SAW"};
 
     // melody[i] の音階名を周波数に変換して、この音の基音にする
     trumpet.baseFreq = Frequency.ofPitch(melody[i]).asHz();
     
 
-    trumpet.harmonics = new float[] {  0.5, 0.5, 0.8, 0.8};
+    trumpet.harmonics = new float[] { 1.0, 0.9, 0.8, 0.8};
     trumpet.filterMode = 0;
-    trumpet.cutoff = 3000; // ローパスのカットオフ（0だと全音が遮断されるため設定必須）
-    trumpet.res = 0.3;     // レゾナンス
+    trumpet.cutoff = 15000; // ローパスのカットオフ（0だと全音が遮断されるため設定必須）
+    trumpet.res = 0.0;     // レゾナンス
     // trumpet.fcoRate = 5.5;
     // trumpet.fcoAmount = 500.0;
 
@@ -74,9 +74,9 @@ void playSong() {
     trumpet.vol = 0.5;
 
     trumpet.atk = 0.01;
-    trumpet.dec = 0.08;
-    trumpet.sus = 0.78;
-    trumpet.rel = 0.12;
+    trumpet.dec = 0.5;
+    trumpet.sus = 0.7;
+    trumpet.rel = 0.2;
 
     out.playNote(
       startTime[i],
