@@ -57,26 +57,29 @@ void playSong() {
     InstrumentConfig trumpet = new InstrumentConfig();
 
     trumpet.out = out;
-    trumpet.waves = new String[] { "TRIANGLE", "TRIANGLE", "TRIANGLE", "SAW"};
+    // SAW波をメインに、TRIANGLEで角を取る（金管楽器の倍音構造に近い）
+    trumpet.waves = new String[] { "SAW", "TRIANGLE" };
 
     // melody[i] の音階名を周波数に変換して、この音の基音にする
     trumpet.baseFreq = Frequency.ofPitch(melody[i]).asHz();
-    
 
-    trumpet.harmonics = new float[] { 1.0, 0.9, 0.8, 0.8};
+    // 基音を強く、高次倍音は段階的に減衰（トランペットらしい倍音バランス）
+    trumpet.harmonics = new float[] { 1.0, 0.7, 0.5, 0.3 };
     trumpet.filterMode = 0;
-    trumpet.cutoff = 15000; // ローパスのカットオフ（0だと全音が遮断されるため設定必須）
-    trumpet.res = 0.0;     // レゾナンス
-    // trumpet.fcoRate = 5.5;
-    // trumpet.fcoAmount = 500.0;
+    trumpet.cutoff = 3500; // 金管らしい丸みを出すカットオフ（高いほど明るく、低いほどこもる）
+    trumpet.res = 0.15;    // 微量のレゾナンスで金属的な張りを加える
 
     // amplitudes[i] を使って、音ごとの強弱を変える
-    trumpet.vol = 0.5;
+    trumpet.vol = 0.4;
 
-    trumpet.atk = 0.01;
-    trumpet.dec = 0.5;
-    trumpet.sus = 0.7;
-    trumpet.rel = 0.2;
+    trumpet.atk = 0.02;  // 速い立ち上がり（トランペットのタンギング）
+    trumpet.dec = 0.08;  // 短い減衰
+    trumpet.sus = 0.85;  // 高いサステイン（吹き続けている感）
+    trumpet.rel = 0.08;  // 短いリリース
+
+    // ビブラート（5.5Hzで微かに揺れる金管奏者のビブラート）
+    trumpet.vibratoRate  = 5.5;
+    trumpet.vibratoDepth = 4.0;
 
     out.playNote(
       startTime[i],
