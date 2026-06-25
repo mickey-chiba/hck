@@ -65,6 +65,8 @@ void playSong() {
 
     trumpet.harmonics = new float[] {  0.5, 0.5, 0.8, 0.8};
     trumpet.filterMode = 0;
+    trumpet.cutoff = 3000; // ローパスのカットオフ（0だと全音が遮断されるため設定必須）
+    trumpet.res = 0.3;     // レゾナンス
     // trumpet.fcoRate = 5.5;
     // trumpet.fcoAmount = 500.0;
 
