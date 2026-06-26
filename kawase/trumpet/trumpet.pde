@@ -8,7 +8,7 @@ InstrumentModule flute;
 
 // 各音の高さ
 String [] melody = {
- "C4","C4","G4","G4","A4","A4","G4","F4","F4","E4","E4","D4","D4","C4"
+ "C5","C5","G5","G5","A5","A5","G5","F5","F5","E5","E5","D5","D5","C5"
 };
 
 // 各音の長さ（拍）
@@ -57,33 +57,33 @@ void playSong() {
     InstrumentConfig trumpet = new InstrumentConfig();
 
     trumpet.out = out;
-    // SAWをメインにSINEを添える（SAW比率が高いほど倍音が豊富で煌びやかになる）
-    trumpet.waves = new String[] { "SAW", "SAW", "SINE" };
+    // SINE単独で倍音を手動制御する（加算合成）
+    // SAW/TRIANGLEは自身が複数の倍音を持つため、harmonicsと組み合わせると倍音が二重になり音が濁る
+    trumpet.waves = new String[] { "SINE" };
 
     // melody[i] の音階名を周波数に変換して、この音の基音にする
     trumpet.baseFreq = Frequency.ofPitch(melody[i]).asHz();
 
-    // 2〜3次倍音を強調した煌びやかな倍音バランス（6次まで伸ばして輝きを増す）
-    trumpet.harmonics = new float[] { 0.7, 1.0, 0.9, 0.7, 0.5, 0.3 };
+    // 実際のトランペットの倍音分布：基音弱め・2〜3次が最強
+    trumpet.harmonics = new float[] { 0.3, 1.0, 0.9, 0.5, 0.25, 0.1 };
     trumpet.filterMode = 0;
-    trumpet.cutoff = 6000; // 明るさを保ちつつ適度に倍音を整形
-    trumpet.res = 0.35;    // レゾナンスを上げて金属的な張りと輝きを加える
+    trumpet.cutoff = 3500; // 金管の明るさを保つカットオフ
+    trumpet.res = 0.4;     // 共鳴感を出すレゾナンス（0.5以上は発振しやすい）
 
-    // FCO：フィルターのカットオフを揺らして音に有機的な動きを加える
-    trumpet.fcoRate   = 4.0;    // 4Hzで揺れる
-    trumpet.fcoAmount = 700.0;  // 揺れ幅700Hz
+    // FCO：フィルターを揺らして呼吸・息の有機感を出す
+    trumpet.fcoRate   = 3.0;
+    trumpet.fcoAmount = 500.0;
 
-    // amplitudes[i] を使って、音ごとの強弱を変える
-    trumpet.vol = 0.35;
+    trumpet.vol = 0.4;
 
-    trumpet.atk = 0.02;  // 短めのアタックでパリッとした立ち上がり
-    trumpet.dec = 0.1;
-    trumpet.sus = 0.8;
-    trumpet.rel = 0.15;
+    trumpet.atk = 0.02;  // タンギングらしい速い立ち上がり
+    trumpet.dec = 0.08;
+    trumpet.sus = 0.85;
+    trumpet.rel = 0.1;  // 短いリリース（息を切る感じ）
 
-    // ビブラート（5.5Hzで微かに揺れる金管奏者のビブラート）
+    // ビブラートは控えめに（深すぎるとシンセっぽくなる）
     trumpet.vibratoRate  = 5.5;
-    trumpet.vibratoDepth = 2.0;
+    trumpet.vibratoDepth = 1.5;
 
     out.playNote(
       startTime[i],
