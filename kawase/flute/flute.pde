@@ -6,6 +6,11 @@ AudioOutput out;
 Minim minim;
 InstrumentModule flute;
 MFCCAnalyzer mfccAnalyzer;
+AudioRecorder recorder;       // WAV録音用レコーダー
+boolean isRecording = false;  // 録音中かどうか
+long recordStartTime = 0;     // 録音開始時刻（ms）
+// 曲全体の長さ: startTime最終値 + duration最終値 + relの余裕
+final float SONG_DURATION_SEC = 8.5;
 // 各音の高さ
 String [] melody = {
   "C5", "C5", "G5", "G5", "A5", "A5", "G5","F5", "F5", "E5", "E5", "D5", "D5", "C5"
@@ -32,6 +37,8 @@ void setup(){
   out = minim.getLineOut(Minim.STEREO, 1024);
   pixelDensity(1);
   mfccAnalyzer = new MFCCAnalyzer();
+  // スケッチフォルダ直下に flute_output.wav として保存する
+  recorder = minim.createRecorder(out, "flute_output.wav");
 }
 void draw(){
   background(0);
@@ -46,6 +53,14 @@ void draw(){
 
   // MFCC描画（追加）
   mfccAnalyzer.draw();
+
+  // 録音中で曲の長さを超えたら自動停止してファイル保存
+  if (isRecording && millis() - recordStartTime > SONG_DURATION_SEC * 1000) {
+    recorder.endRecord();
+    recorder.save();
+    isRecording = false;
+    println("録音完了: flute_output.wav");
+  }
 }
 
 void playSong() {
@@ -92,6 +107,15 @@ void keyPressed() {
   switch (key) {
     case 'a':
       playSong();
+      break;
+
+    // 'r' キーで録音しながら演奏開始（曲が終わると自動保存）
+    case 'r':
+      recorder.beginRecord();
+      isRecording = true;
+      recordStartTime = millis();
+      playSong();
+      println("録音開始...");
       break;
 
     //追加：'m' キーでMFCC解析を実行
