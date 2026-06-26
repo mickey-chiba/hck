@@ -5,12 +5,16 @@ import processing.serial.*;
 AudioOutput out;
 Minim minim;
 InstrumentModule flute;
+
+//--------wav録音処理追加----------
 MFCCAnalyzer mfccAnalyzer;
 AudioRecorder recorder;       // WAV録音用レコーダー
 boolean isRecording = false;  // 録音中かどうか
 long recordStartTime = 0;     // 録音開始時刻（ms）
 // 曲全体の長さ: startTime最終値 + duration最終値 + relの余裕
 final float SONG_DURATION_SEC = 8.5;
+//-------------------------------
+
 // 各音の高さ
 String [] melody = {
   "C5", "C5", "G5", "G5", "A5", "A5", "G5","F5", "F5", "E5", "E5", "D5", "D5", "C5"
@@ -54,6 +58,7 @@ void draw(){
   // MFCC描画（追加）
   mfccAnalyzer.draw();
 
+//--------wav録音処理追加----------
   // 録音中で曲の長さを超えたら自動停止してファイル保存
   if (isRecording && millis() - recordStartTime > SONG_DURATION_SEC * 1000) {
     recorder.endRecord();
@@ -61,6 +66,7 @@ void draw(){
     isRecording = false;
     println("録音完了: flute_output.wav");
   }
+//-------------------------------
 }
 
 void playSong() {
@@ -109,6 +115,7 @@ void keyPressed() {
       playSong();
       break;
 
+//--------wav録音処理追加----------
     // 'r' キーで録音しながら演奏開始（曲が終わると自動保存）
     case 'r':
       recorder.beginRecord();
@@ -117,6 +124,7 @@ void keyPressed() {
       playSong();
       println("録音開始...");
       break;
+//-------------------------------
 
     //追加：'m' キーでMFCC解析を実行
     case 'm':
