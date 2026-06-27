@@ -7,7 +7,6 @@ Minim minim;
 InstrumentModule flute;
 
 //--------wav録音処理追加----------
-MFCCAnalyzer mfccAnalyzer;
 AudioRecorder recorder;       // WAV録音用レコーダー
 boolean isRecording = false;  // 録音中かどうか
 long recordStartTime = 0;     // 録音開始時刻（ms）
@@ -40,7 +39,6 @@ void setup(){
   minim = new Minim(this);
   out = minim.getLineOut(Minim.STEREO, 1024);
   pixelDensity(1);
-  mfccAnalyzer = new MFCCAnalyzer();
   // スケッチフォルダ直下に flute_output.wav として保存する
   recorder = minim.createRecorder(out, "flute_output.wav");
 }
@@ -54,9 +52,6 @@ void draw(){
     line( i, 50 + out.left.get(i)*50, i+1, 50 + out.left.get(i+1)*50 );
     line( i, 150 + out.right.get(i)*50, i+1, 150 + out.right.get(i+1)*50 );
   }
-
-  // MFCC描画（追加）
-  mfccAnalyzer.draw();
 
 //--------wav録音処理追加----------
   // 録音中で曲の長さを超えたら自動停止してファイル保存
@@ -125,10 +120,5 @@ void keyPressed() {
       println("録音開始...");
       break;
 //-------------------------------
-
-    //追加：'m' キーでMFCC解析を実行
-    case 'm':
-      mfccAnalyzer.analyze(out);
-      break;
   }
 }
