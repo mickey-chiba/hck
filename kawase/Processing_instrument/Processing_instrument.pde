@@ -258,5 +258,3 @@ boolean waitForData(int requiredBytes) {
   return true;
 }
 
-
-// 音色合成エンジンは InstrumentModule.pde に分離
