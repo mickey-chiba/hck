@@ -7,6 +7,14 @@ Minim minim;
 InstrumentModule flute;
 MFCCAnalyzer mfccAnalyzer;
 
+//--------wav録音処理追加----------
+AudioRecorder recorder;       // WAV録音用レコーダー
+boolean isRecording = false;  // 録音中かどうか
+long recordStartTime = 0;     // 録音開始時刻（ms）
+// 曲全体の長さ: startTime最終値 + duration最終値 + relの余裕
+final float SONG_DURATION_SEC = 8.5;
+//-------------------------------
+
 // 各音の高さ
 String [] melody = {
   "C3","C3","G2","G2","A2","A2","G2","F2","F2","E2","E2","D2","D2","C2"
@@ -34,6 +42,8 @@ void setup(){
   out = minim.getLineOut(Minim.STEREO, 1024);
   pixelDensity(1);
   mfccAnalyzer = new MFCCAnalyzer();
+  // スケッチフォルダ直下に bass_output.wav として保存する
+  recorder = minim.createRecorder(out, "bass_output.wav");
 }
 void draw(){
 
@@ -50,6 +60,16 @@ void draw(){
 
   // MFCC描画（追加）
   mfccAnalyzer.draw();
+
+//--------wav録音処理追加----------
+  // 録音中で曲の長さを超えたら自動停止してファイル保存
+  if (isRecording && millis() - recordStartTime > SONG_DURATION_SEC * 1000) {
+    recorder.endRecord();
+    recorder.save();
+    isRecording = false;
+    println("録音完了: bass_output.wav");
+  }
+//-------------------------------
 }
 
 void playSong() {
@@ -99,6 +119,17 @@ void keyPressed() {
       case 'm':
       mfccAnalyzer.analyze(out);
       break;
+
+//--------wav録音処理追加----------
+    // 'r' キーで録音しながら演奏開始（曲が終わると自動保存）
+    case 'r':
+      recorder.beginRecord();
+      isRecording = true;
+      recordStartTime = millis();
+      playSong();
+      println("録音開始...");
+      break;
+//-------------------------------
   }
 }
 

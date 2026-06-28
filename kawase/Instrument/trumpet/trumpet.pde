@@ -6,6 +6,14 @@ AudioOutput out;
 Minim minim;
 InstrumentModule flute;
 
+//--------wav録音処理追加----------
+AudioRecorder recorder;       // WAV録音用レコーダー
+boolean isRecording = false;  // 録音中かどうか
+long recordStartTime = 0;     // 録音開始時刻（ms）
+// 曲全体の長さ: startTime最終値 + duration最終値 + relの余裕
+final float SONG_DURATION_SEC = 8.5;
+//-------------------------------
+
 // 各音の高さ
 String [] melody = {
  "C5","C5","G5","G5","A5","A5","G5","F5","F5","E5","E5","D5","D5","C5"
@@ -32,7 +40,8 @@ void setup(){
   minim = new Minim(this);
   out = minim.getLineOut(Minim.STEREO, 1024);
   pixelDensity(1);
-
+  // スケッチフォルダ直下に trumpet_output.wav として保存する
+  recorder = minim.createRecorder(out, "trumpet_output.wav");
 }
 void draw(){
 
@@ -47,7 +56,15 @@ void draw(){
     line( i, 150 + out.right.get(i)*50, i+1, 150 + out.right.get(i+1)*50 );
   }
 
-
+//--------wav録音処理追加----------
+  // 録音中で曲の長さを超えたら自動停止してファイル保存
+  if (isRecording && millis() - recordStartTime > SONG_DURATION_SEC * 1000) {
+    recorder.endRecord();
+    recorder.save();
+    isRecording = false;
+    println("録音完了: trumpet_output.wav");
+  }
+//-------------------------------
 }
 
 void playSong() {
@@ -100,8 +117,17 @@ void keyPressed() {
     case 'p':
       playSong();
       break;
-      
 
+//--------wav録音処理追加----------
+    // 'r' キーで録音しながら演奏開始（曲が終わると自動保存）
+    case 'r':
+      recorder.beginRecord();
+      isRecording = true;
+      recordStartTime = millis();
+      playSong();
+      println("録音開始...");
+      break;
+//-------------------------------
   }
 }
 
