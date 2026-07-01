@@ -43,6 +43,7 @@ void setup(){
   myPort = new Serial(this, "", 115200);    //シリアル通信の設定(""にはArduinoのポート番号を入力)
   minim = new Minim(this);
   out = minim.getLineOut();
+  activeNotes = new NoteJob[100];
   myPort.write(0xDD);
   println("start!");
   myPort.clear();
