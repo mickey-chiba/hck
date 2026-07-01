@@ -45,42 +45,46 @@ const int port = 4286;                    //ポート番号
 
 float currentValue = 0.0;                 //現在のBPMを入れておく変数
 float receivedValue = 0.0;                //受信したBPMを入れておく変数
-float number = 1.0;                       //輪唱の拍数を定義する変数
+float number = 24.0;                       //輪唱の拍数を定義する変数
 float preValue = 7000.0;                  //BPMを受信した際の条件式に使用する変数
+bool roundMode = false;
 bool start = false;                       //開始したかを判別する変数
+//可変テンポ演奏で使う変数
 float musicalTime = 0;                     //音の鳴らす時間を定める時間の変数
+unsigned long playbackStartMs = 0;         //演奏開始の絶対時刻
 unsigned long lastTime = 0;                //現在時刻を保存する変数
 unsigned long segmentStartMs = 0;          // 現在のBPM区間が始まった絶対時刻
 float         segmentStartBeat = 0;        // その時点でのmusicalTime
 float         currentSegmentBPM = 0;       // 現在の区間のBPM
-//演奏で使う変数
 const int N = 42;                          //配列の要素数
 bool          noteOnSent[N]  = {false};    //発音情報を送ったか判定する配列
 bool          noteOffSent[N] = {false};    //消音情報を送ったか判定する配列
 bool          playing         = false;     //演奏開始の合図の変数
 bool          processingReady = false;     //Processingの受信準備を判断する変数
+unsigned long playStartms    = 0;          //輪唱までの時間を記録する変数
 bool          waitingToStart = false;      //演奏を開始することを判別する変数
 float         roundDelay     = 0;          //計算した輪唱時間を記録する変数
 bool          bpmreceivedonce = false;     // BPMが初めて届いたかのフラグ
 bool first = false;                        //配列送信完了の処理を一度だけ実行させる変数
 bool experiment = true;                    //BPM受信をずっと行うための変数
-//可変テンポ演奏・輪唱で使用する変数(※新規追加)
-float smoothedBPM = 0;                     // 実際にmusicalTime計算で使うBPM
-float bpmSmoothingFactor = 0.3;            // 0〜1で平滑化の強さ（小さいほど滑らか）
-float maxBeatStepPerFrame = 0.01;          // 1フレームで進める最大拍数（要調整）
-unsigned long noteOnSentAtMs[100];         // 各音符がNOTE_ONを送信した実時刻
+float smoothedBPM = 0; // 実際にmusicalTime計算で使うBPM
+float bpmSmoothingFactor = 0.5; // 0〜1で平滑化の強さ（小さいほど滑らか）
+float maxBeatStepPerFrame = 0.01; // 1フレームで進める最大拍数（要調整）
+unsigned long noteOnSentAtMs[100]; // 各音符がNOTE_ONを送信した実時刻
 const unsigned long MIN_NOTE_DURATION_MS = 30; // 最低30msは鳴らす
-float lastDetectedBPM = -1;                // BPM変化検出専用（currentValueとは別に持つ）
-long timeOffsetMs = 0;                     // PC基準時刻 - 自分のmillis() のオフセット(ms単位)
+float lastDetectedBPM = -1;  // BPM変化検出専用（currentValueとは別に持つ）
+long timeOffsetMs = 0;     // PC基準時刻 - 自分のmillis() のオフセット(ms単位)
 bool timeSynced   = false;
-const float OFFSET_SMOOTHING = 0.05;       // 0〜1、小さいほど滑らかだが収束が遅い
-float waitMusicalTime = 0;                 // 待機開始からの経過拍数
-float waitSegmentStartBeat = 0;            // 待機区間の開始拍
-unsigned long waitSegmentStartMs = 0;      // 待機区間の開始時刻
-float waitLastDetectedBPM = -1;            //一時的にBPMを保存する変数
-float waitSmoothedBPM = 0;                 // 平滑化
-// float         noteRemainingBeats[100]; // 各音符の「残りビート数」（duration基準）
-// unsigned long lastFrameMs = 0;
+const float OFFSET_SMOOTHING = 0.05; // 0〜1、小さいほど滑らかだが収束が遅い
+float waitMusicalTime = 0;       // 待機開始からの経過拍数
+float waitSegmentStartBeat = 0;  // 待機区間の開始拍
+unsigned long waitSegmentStartMs = 0; // 待機区間の開始時刻
+float waitLastDetectedBPM = -1;
+float waitSmoothedBPM = 0; // 必要なら平滑化も
+
+
+float         noteRemainingBeats[100]; // ★各音符の「残りビート数」（duration基準）
+unsigned long lastFrameMs = 0;
 //音階の配列
 String noteNames[] = {"C4", "C4", "G4", "G4", "A4", "A4", "G4",
                       "F4", "F4", "E4", "E4", "D4", "D4", "C4",
@@ -126,20 +130,49 @@ void setup() {
   udp.begin(port);                                       //UDPソケットを開始
 }
 
+void writeFloatArray(float* arr, int n) {             //float配列の先頭アドレス、nは要素数
+  uint8_t* p = (uint8_t*)arr;                         //floatポインタをuint8_tに変換
+  int totalBytes = n * sizeof(float);                 //総バイト数を計算
+  int offset = 0;                                     //どこまで送るかを記録する変数
+  
+  while (offset < totalBytes) {                        //総バイト数までループ
+    int chunk = min(64, totalBytes - offset);          //送るバイト数を決める。64バイト比較する
+    Serial.write(p + offset, chunk);                   //ポインタ演算した値とバイト数を送信
+    Serial.flush();                                    // チャンクごとにflush
+    offset += chunk;                                   //読み取ったバイト数をoffsetにプラスする
+  }
+}
+//float配列の処理
 void writeFloatValue(float val) {
   uint8_t* p = (uint8_t*)&val;              //valをuint8_tに変換
   Serial.write(p, sizeof(float));           //変換したバイナリ型の値とサイズ数を送信
   Serial.flush();
 }
-
+//String配列の処理
+void writeStringArray(String* arr, int n) {
+  for (int i = 0; i < n; i++) {
+    uint8_t len = (uint8_t)arr[i].length();   //文字列の長さを1バイトにする   
+    Serial.write(len);                        //文字列の長さを送信する
+    Serial.flush();                           //送信が完了するまで待つ
+    Serial.write((uint8_t*)arr[i].c_str(), len);    //配列をchar型にして1バイトのバッファと配列の大きさを送信
+    Serial.flush();
+  }
+}
 void sendtempo(float val) {      //BPMをシリアル通信する関数
   Serial.write(0xBB);     //スタートヘッダー1
   Serial.write(0x66);     //スタートヘッダー2
   writeFloatValue(val);   //関数を用いてBPMを送信する
 }
+void sendmeloinf(){      //音階データの送信
+  Serial.write(0xAA); // スタートヘッダー1
+  Serial.write(0x55); // スタートヘッダー2
+  uint16_t datasize = sizeof(duration) / sizeof(duration[0]); // 配列の要素数を計算
+  Serial.write((uint8_t)datasize); // 要素数をuint8_t(1バイト)にキャスト
+  writeStringArray(noteNames, datasize);
+  writeFloatArray(amplitudes,  datasize);
+  
  
- 
-
+}
 void updateSmoothedBPM(float targetBPM) {
   if (smoothedBPM <= 0) {
     smoothedBPM = targetBPM; // 初回はそのまま代入
@@ -202,13 +235,14 @@ void updateNotes() {
 void sendNoteData(int index) {
   Serial.write(0xAA);
   Serial.write(0x55);
-  Serial.write(index);
+  Serial.write((uint8_t)index);
+
 
   // 音符名（可変長：長さ＋本体）
   uint8_t nameLen = (uint8_t)noteNames[index].length();
   Serial.write(nameLen);
   Serial.write(noteNames[index].c_str(), nameLen);
-  // Serial.write((uint8_t)1);
+
   // 音量（固定4バイト）
   uint8_t* p = (uint8_t*)&amplitudes[index];
   Serial.write(p, sizeof(float));
@@ -216,6 +250,13 @@ void sendNoteData(int index) {
   Serial.flush();
 }
 
+// void sendNoteOn(int index) {
+//   Serial.write(0xCC);           //スタートヘッダー1 
+//   Serial.write(0x33);           //スタートヘッダー2
+//   Serial.write((uint8_t)index); //配列の番号を1バイトに変換して送信
+//   Serial.write((uint8_t)1);     //1を送信する
+//   Serial.flush();
+// }
 
 void sendNoteOff(int index) {
   Serial.write(0xCC);           //スタートヘッダー1
@@ -266,6 +307,10 @@ void handleTimeSync(int64_t pcTimeUs) {
   // syncCount++;
 }
 
+// bool isSyncReady() {
+//   return syncCount >= SYNC_COUNT_REQUIRED;
+// }
+
 // 以後、時刻が必要な箇所はすべてこれを使う
 unsigned long syncedMillis() {
   return millis() + timeOffsetMs;
@@ -285,15 +330,34 @@ void updateWaitProgress(float bpm) {
 void loop() {
   if (Serial.available() > 0) {
     int signal = Serial.read();   //受信したシリアルデータを読み、signalに代入
-
+    // digitalWrite(LED_BUILTIN, HIGH); // 何か受信したら点灯
+    // delay(200);
+    // digitalWrite(LED_BUILTIN, LOW);
+    // if(!first){
+    //   if(signal == 0xDD && !start){   //送信されたデータが0xDDかつstart = falseの時に実行
+    //     start = true;
+    //     roundMode = true;
+    //     first = true; 
+    //     // sendmeloinf();            //配列を送信する関数を呼び出す
+    //     // digitalWrite(LED_BUILTIN, HIGH); // 何か受信したら点灯
+    //     // delay(100);
+    //     // digitalWrite(LED_BUILTIN, LOW);    
+    //   // sendmeloinf() はまだ呼ばない（最小限の確認のため）
+    //   }
+    // }else 
     if (signal == 0xDD && !processingReady) {   //送信されたデータが0xFFかつprocessingReady = falseの時に実行
-      // 配列データ送信済み、READY信号を待っている段階 
+      // 配列データ送信済み、READY信号を待っている段階
+      // if (signal == 0xFF) {   
         resetPlayback();      //情報をリセットする関数を呼び出す
         processingReady = true;
         bpmreceivedonce = false;
         roundDelay = 0;
         playStartms = 0;
         waitingToStart = true;
+        // digitalWrite(LED_BUILTIN, HIGH); // 何か受信したら点灯
+        // delay(2000);
+        // digitalWrite(LED_BUILTIN, LOW);    
+      // }
     }
   }
   if(experiment){ 
@@ -318,8 +382,8 @@ void loop() {
 
           currentValue = receivedValue;
           preValue = receivedValue;
-          // Serial.print("BPM = ");
-          // Serial.println(currentValue);
+          Serial.print("BPM = ");
+          Serial.println(currentValue);
           sendtempo(currentValue);                          //関数を呼び出しBPMをシリアル送信
           // digitalWrite(LED_BUILTIN, HIGH); 
           // delay(2000);
@@ -334,7 +398,22 @@ void loop() {
             waitLastDetectedBPM  = currentValue;
           }
         }
+        //  else if (packetSize == 12) {
+        //   uint8_t buf[12];
+        //   udp.read(buf, 12);
+        //   int32_t marker;
+        //   int64_t pcTimeUs;
+        //   memcpy(&marker,   buf,     4);
+        //   memcpy(&pcTimeUs, buf + 4, 8);
 
+        //   if (marker == -1) {
+        //     handleTimeSync(pcTimeUs);
+        //   }
+        // else if (packetSize == 16) {
+        //   uint8_t buf[16];
+        //   udp.read(buf, 16);
+        //   handleScheduledTempo(buf);
+        // }
         else {
         // 想定外のサイズのデータが来た場合は読み飛ばしてバッファをクリア
           udp.flush();
@@ -342,6 +421,7 @@ void loop() {
         }
       }
     }
+  // checkPendingBpmChange();
   if (waitingToStart && bpmreceivedonce) {   //配列データの送信完了かつBPM送信かつ輪唱時間以上になったら実行
     updateWaitProgress(currentValue);
     if(number <= 0 || waitMusicalTime >= number){
@@ -349,6 +429,7 @@ void loop() {
       playing        = true;
       segmentStartMs    = syncedMillis();
       segmentStartBeat  = 0;
+      // lastFrameMs = syncedMillis();
       musicalTime = 0;
       currentSegmentBPM = currentValue;
       lastDetectedBPM   = currentValue; // 追加：BPM変化検出の基準もここで揃える
@@ -362,9 +443,7 @@ void loop() {
       // delay(10);
       // digitalWrite(LED_BUILTIN, LOW);
 
-  } 
-
-}
+  }
 
   // BPM同期LED点滅（currentValueが有効な値のときだけ動作）
   if (currentValue > 0) {
