@@ -137,7 +137,7 @@ void readNoteEvent() {
     flute.waves = new String[] { "SINE", "SINE", "SINE", "SINE", "SINE" };
 
     // melody[i] の音階名を周波数に変換して、この音の基音にする
-    flute.baseFreq = Frequency.ofPitch(melody[i]).asHz();
+    flute.baseFreq = Frequency.ofPitch(melody[index]).asHz();
     // flute.baseFreq = Frequency.ofPitch(pitch).asHz();
 
     flute.harmonics = new float[] { 0.9, 1.0, 0.05, 0.01, 0.002 };

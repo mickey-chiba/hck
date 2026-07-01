@@ -137,7 +137,7 @@ void readNoteEvent() {
     bass.waves = new String[] { "SINE", "TRIANGLE" };
 
     // melody[i] の音階名を周波数に変換して、この音の基音にする
-    bass.baseFreq = Frequency.ofPitch(melody[i]).asHz();
+    bass.baseFreq = Frequency.ofPitch(melody[index]).asHz();
     
 
     bass.harmonics = new float[] {1.0, 0.3 };

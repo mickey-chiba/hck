@@ -137,7 +137,7 @@ void readNoteEvent() {
     tekkin.waves = new String[] { "SINE","TRIANGLE","SINE" };
 
     // melody[i] の音階名を周波数に変換して、この音の基音にする
-    tekkin.baseFreq = Frequency.ofPitch(melody[i]).asHz();
+    tekkin.baseFreq = Frequency.ofPitch(melody[index]).asHz();
     
 
     tekkin.harmonics = new float[] {1.0,0.75,0.45,0.18,0.05};
