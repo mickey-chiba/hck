@@ -8,12 +8,12 @@ WiFiUDP udp;
 
 const int port = 4286; // ポート番号
 
-float currentValue    = 0.0;      // 現在のBPMを入れておく変数
-float receivedValue   = 0.0;      // 受信したBPMを入れておく変数
-float number          = 1.0;      // 輪唱の拍数を定義する変数
-float preValue        = 7000.0;   // BPMを受信した際の条件式に使用する変数
+float currentValue    = 0.0;    // 現在のBPMを入れておく変数
+float receivedValue   = 0.0;    // 受信したBPMを入れておく変数
+float number          = 1.0;    // 輪唱の拍数を定義する変数
+float preValue        = 7000.0; // BPMを受信した際の条件式に使用する変数
 bool  roundMode       = false;
-bool  start           = false;    // 開始したかを判別する変数
+bool  start           = false;  // 開始したかを判別する変数
 
 // 可変テンポ演奏で使う変数
 float         musicalTime     = 0;       // 音の鳴らす時間を定める時間の変数
@@ -76,6 +76,7 @@ public:
     }
 };
 
+int count = 0;
 LEDmodule led1(3); // ピン3に接続したLEDモジュール
 
 // 遅延計測用変数
@@ -104,17 +105,16 @@ void setup()
     Serial.println("==================================");
     Serial.println(" LED遅延計測プログラム 開始");
     Serial.println(" 計測項目:");
-    Serial.println("   [受信遅延] BPM受信 -> LED点灯までの時間");
-    Serial.println("   [周期ズレ] 期待点灯時刻 -> 実際の点灯時刻のズレ");
+    Serial.println("   [遅延] BPM受信 -> LED点灯のズレ（ms）");
     Serial.println("==================================");
 }
 
 // float配列をチャンク分割してシリアル送信する
 void writeFloatArray(float *arr, int n)
 {
-    uint8_t *p          = (uint8_t *)arr;     // floatポインタをuint8_tに変換する
-    int      totalBytes = n * sizeof(float);  // 総バイト数を計算する
-    int      offset     = 0;                  // 送信済みバイト数を追跡する変数
+    uint8_t *p          = (uint8_t *)arr;    // floatポインタをuint8_tに変換する
+    int      totalBytes = n * sizeof(float); // 総バイト数を計算する
+    int      offset     = 0;                 // 送信済みバイト数を追跡する変数
 
     while (offset < totalBytes)
     {
@@ -279,7 +279,6 @@ void loop()
             {
                 currentValue = receivedValue;
                 preValue     = receivedValue;
-
                 Serial.print("BPM = ");
                 Serial.println(currentValue);
                 sendtempo(currentValue); // BPMをProcessingへ転送する
@@ -330,7 +329,80 @@ void loop()
         updateNotes();
     }
 
-    // BPMに合わせてLEDを点灯し、受信遅延とジッタを計測する
+    // バグ修正: 現在時刻で初期化することで正しく1秒待機する
+    unsigned long millis_buf = millis();
+    while ((millis() - millis_buf) < 1000)
+    {
+        ;
+    }
+
+    count++;
+
+    // BPM範囲に応じてLEDの輝度を切り替える
+    if (currentValue <= 30)
+    {
+        if ((count % 50) == 0)
+        {
+            led1.setBrightness(0);
+        }
+    }
+    else if (30 < currentValue && currentValue <= 45)
+    {
+        if ((count % 50) == 0)
+        {
+            led1.setBrightness(51);
+            if ((count % 100) == 0)
+            {
+                led1.setBrightness(0);
+            }
+        }
+    }
+    else if (45 < currentValue && currentValue <= 60)
+    {
+        if ((count % 50) == 0)
+        {
+            led1.setBrightness(102);
+            if ((count % 100) == 0)
+            {
+                led1.setBrightness(0);
+            }
+        }
+    }
+    else if (60 < currentValue && currentValue <= 75)
+    {
+        if ((count % 50) == 0)
+        {
+            led1.setBrightness(153);
+            if ((count % 100) == 0)
+            {
+                led1.setBrightness(0);
+            }
+        }
+    }
+    else if (75 < currentValue && currentValue <= 90)
+    {
+        if ((count % 50) == 0)
+        {
+            led1.setBrightness(204);
+            if ((count % 100) == 0)
+            {
+                led1.setBrightness(0);
+            }
+        }
+    }
+    else if (90 < currentValue && currentValue <= 120)
+    {
+        if ((count % 50) == 0)
+        {
+            led1.setBrightness(255);
+            if ((count % 100) == 0)
+            {
+                led1.setBrightness(255);
+            }
+        }
+    }
+
+    // BPMに合わせてLEDを点灯し、今回の遅延（ズレ）だけを計測する
     if (currentValue > 0)
     {
         unsigned long interval_ms = (unsigned long)(60000.0f / currentValue);
@@ -344,14 +416,9 @@ void loop()
 
             if (ledOn)
             {
-                // BPM受信からLED点灯までの累積遅延
-                unsigned long sinceReceive = ledTime - receiveTime;
-                // 期待点灯時刻と実際の点灯時刻のズレ（ループ処理遅延）
+                // 期待点灯時刻と実際の点灯時刻のズレ（今回の遅延のみ）
                 long jitter = (long)ledTime - (long)expectedTime;
-
-                Serial.print("[LED点灯] 受信遅延: ");
-                Serial.print(sinceReceive);
-                Serial.print(" ms  |  周期ズレ: ");
+                Serial.print("[遅延] ");
                 Serial.print(jitter);
                 Serial.println(" ms");
             }
