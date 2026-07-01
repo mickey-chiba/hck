@@ -9,6 +9,7 @@ DatagramSocket udpSocket;
 
 String broadcastIP = "192.168.10.255";
 int port = 4286;
+long lastSync = 0;  //送る頻度を示す時間
 
 Serial myPort;
 color myColor = color(255);
@@ -52,6 +53,10 @@ void setup() {
 }
 
 void draw() {
+  if (millis() - lastSync > 80) {    //※新規追加
+    sendSync();
+    lastSync = millis();
+  }
   colorMode(RGB, 255);
   background(0);  // 背景をグレーに
   fill(255, 0, 0);  // テキストを赤に
@@ -77,6 +82,29 @@ void sendFloat(float value) {
 
     udpSocket.send(packet);
 
+  }
+  catch(Exception e) {
+    e.printStackTrace();
+  }
+}
+void sendSync() {      //※新規追加関数(基準時刻を送信する処理)
+
+  try {
+
+    ByteBuffer bb = ByteBuffer.allocate(12);
+
+    bb.order(ByteOrder.LITTLE_ENDIAN);
+
+    bb.putInt(-1);
+
+    long pcTime = System.nanoTime() / 1000L;
+
+    bb.putLong(pcTime);
+
+    DatagramPacket p = new DatagramPacket(bb.array(), 12,
+                       InetAddress.getByName(broadcastIP),
+                       port);
+    udpSocket.send(p);
   }
   catch(Exception e) {
     e.printStackTrace();
