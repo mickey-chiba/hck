@@ -364,8 +364,8 @@ void loop()
 
                 currentValue = receivedValue;
                 preValue = receivedValue;
-                // Serial.print("BPM = ");
-                // Serial.println(currentValue);
+                Serial.print("BPM = ");
+                Serial.println(currentValue);
                 sendtempo(currentValue); // 関数を呼び出しBPMをシリアル送信
                 // digitalWrite(LED_BUILTIN, HIGH);
                 // delay(2000);
