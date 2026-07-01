@@ -5,17 +5,11 @@ import java.nio.*;
 
 Serial myPort;
 float tempo = 0.0;
-int N;
 float updatedtempo = 0.0;
 AudioOutput out;
 Minim minim;
 InstrumentModule trumpet;
 
-String[] melody;
-
-float[] duration;
-float[] startTime;
-float[] amplitudes;
 
 boolean dataLoaded = false; 
 // テンポ管理 
@@ -58,14 +52,12 @@ void draw() {
   checkdata();
   background(0);
   stroke(255);
-  for(int i = 0; i < out.bufferSize() - 1; i++)        //波形の表示処理
+  for(int i = 0; i < out.bufferSize() - 1; i++)        //波形の表示処理(確認程度のため本番は使用しない)
   {
     line( i, 50 + out.left.get(i)*50, i+1, 50 + out.left.get(i+1)*50 );
   }
 
 }
-
-
 
 void checkdata() {                //データの処理を行う関数
   if (myPort.available() < 1) return;   
@@ -75,7 +67,7 @@ void checkdata() {                //データの処理を行う関数
     int b2 = myPort.read();
     if (b2 == 0x55)  {
       if(!dataLoaded) {
-        readData();
+        readNote();
       }
     }
   }else if (b1 == 0xBB) {
@@ -90,7 +82,7 @@ void checkdata() {                //データの処理を行う関数
     // 発音ヘッダー
     if (!waitForData(1)) return;
     if (myPort.read() != 0x33) return;
-    readNoteEvent();
+    readNoteOff();
     
   }
   
@@ -109,35 +101,42 @@ void readbpm() {
       }    
   }
  }
-void readNoteEvent() {
-  if (!waitForData(2)) { myPort.clear(); return; }
 
-  int index  = myPort.read() & 0xFF; // 音符インデックス
-  int onOff  = myPort.read() & 0xFF; // 1=ON 0=OFF
+void readNote() {
+//  while (myPort.available() > 0) {
+//    int b = myPort.read() & 0xFF;
+//    print(String.format("%02X ", b));
+//}
+//println();
+  if (!waitForData(1)) return;
+  int index = myPort.read() & 0xFF; //  インデックスを受信
+  if (!waitForData(1)) return;
+  int namelen = myPort.read() & 0xFF;
+  println(namelen);
   
-  //println("NOTE_EVENT受信 index=" + index + " onOff=" + onOff
-  //        + " N=" + N + " activeNotes=" + (activeNotes != null));
-
-  //if (activeNotes == null) {
-  //  println("配列受信完了前にNOTE_ONが届いた");
-  //  return;
-  //}
-  if (activeNotes == null && N > 0) {
-    activeNotes = new NoteJob[N];
-    println("readNoteEvent内でactiveNotes初期化 N=" + N);
-  }
-  if (index < 0 || index >= N) {
-    println("index範囲外: " + index + " N=" + N);
-    return;
-  }
-
-  //if (index < 0 || index >= N || activeNotes == null) return;
-  InstrumentConfig trumpet = new InstrumentConfig();
+  if (!waitForData(namelen)) return;
+  byte[] nameBuf = myPort.readBytes(namelen);
+  String noteName = new String(nameBuf, java.nio.charset.StandardCharsets.UTF_8);
+  println("NOTE:" + noteName);
+  if (!waitForData(4)) return;
+  byte[] ampBuf = myPort.readBytes(4);
+  //println(
+  //  hex(ampBuf[0] & 0xFF) + " " +
+  //  hex(ampBuf[1] & 0xFF) + " " +
+  //  hex(ampBuf[2] & 0xFF) + " " +
+  //  hex(ampBuf[3] & 0xFF)
+  //);
+  ByteBuffer bb = ByteBuffer.wrap(ampBuf);
+  bb.order(ByteOrder.LITTLE_ENDIAN);
+  float amp = bb.getFloat();
+  println("amplitude" + amp);
+    
+  InstrumentConfig trumpet = new InstrumentConfig();    //閾値は各楽器のパラメータによって変更してください
     trumpet.out = out;
     trumpet.waves = new String[] { "SAW", "SQUARE" };
 
     // melody[i] の音階名を周波数に変換して、この音の基音にする
-    trumpet.baseFreq = Frequency.ofPitch(melody[index]).asHz();
+    trumpet.baseFreq = Frequency.ofPitch(noteName).asHz();
 
     trumpet.harmonics = new float[] { 1.0, 0.8, 0.9, 0.7, 0.4, 0.35, 0.3 };
     trumpet.cutoff = 2000.0;
@@ -147,104 +146,37 @@ void readNoteEvent() {
     trumpet.fcoAmount = 1000.0;
 
     // amplitudes[i] を使って、音ごとの強弱を変える
-    trumpet.vol = amplitudes[index];
+    trumpet.vol = amp;
 
     trumpet.atk = 0.145;
     trumpet.dec = 0.12;
     trumpet.sus = 0.7;
     trumpet.rel = 0.3;
-    trumpet.vibratoRate  = 4.0;
-    trumpet.vibratoDepth = 2.0;
+    trumpet.vibratoRate  = 2.0;
+    trumpet.vibratoDepth = 1.0;
 
 
-  InstrumentModule inst = new InstrumentModule(trumpet);
+    InstrumentModule inst = new InstrumentModule(trumpet);
 
-  
-
-  if (onOff == 1) {
-    inst.noteOn(0); // Arduinoがタイミングを管理するため0でOK
-    activeNotes[index] = new NoteJob(inst);  //クラスの配列に発音した情報を記録する
-    println("NOTE_ON: " + melody[index]);
-
-  } else if (onOff == 0) {
-    // NOTE_OFF：対応するNoteJobのstop()を呼ぶ
-    if (activeNotes[index] != null) {
-      activeNotes[index].stop();      
-      activeNotes[index] = null;
-      println("NOTE_OFF: " + index);
-    }
-  }
-}  
-void readData() {
-
-  if (!waitForData(1)) return;
-  N = myPort.read() & 0xFF; 
-  if (N <= 0 || N > 100) { 
-    println("invalid N:", N);
-    N = 0;
-    return;
-  }
-  activeNotes = new NoteJob[N];
-//string配列受信
-  melody = new String[N];
-  for (int i = 0; i < N; i++) {
-    if (!waitForData(1)) {
-      println("String長さ受信タイムアウト i=" + i);
-      return;
-    }
-    int strLen = myPort.read() & 0xFF;
-
-    if (!waitForData(strLen)) {
-      println("String本体受信タイムアウト i=" + i);
-      return;
-    }
-    byte[] strBuf = myPort.readBytes(strLen);
-    melody[i] = new String(strBuf, java.nio.charset.StandardCharsets.UTF_8);
-  }
-  println("melody");
-  printArray(melody);
-  
-  //各配列受信
-  int totalBytes = N * 4 * 1;     //要素数 * バイト数 * 配列数
-  
-  if (!waitForData(totalBytes)) {
-    println("配列データの受信タイムアウト");
-    println("  → Processingが待っていたバイト数: " + totalBytes + " バイト");
-    println("  → 実際にシリアルポートに届いたバイト数: " + myPort.available() + " バイト");
-    println("--------------------------------------------------");
-    return;
-  }  
-
-  byte[] buf = myPort.readBytes(totalBytes);
-  ByteBuffer bb = ByteBuffer.wrap(buf);
-  bb.order(ByteOrder.LITTLE_ENDIAN);
-
-  amplitudes = new float[N];  
-  // 4番目：amplitudes
-  for (int i = 0; i < N; i++) {
-    amplitudes[i] = bb.getFloat();
-  }
-
-  
-
-  println("amplitudes");
-  printArray(amplitudes);
-
-  println("受信成功");
-  if (activeNotes != null) {
-    for (int i = 0; i < activeNotes.length; i++) {
-      if (activeNotes[i] != null) {
-        activeNotes[i].stop();
-        activeNotes[i] = null;
-      }
-    }
-  }
-  dataLoaded = true;
-  activeNotes = new NoteJob[N];
-  myPort.write(0xFF);
-  println("READY送信");
-  myPort.clear();
+    try {
+    //  NOTE_ON：meloinstrumentを生成してnoteOn()を直接呼ぶ
+    inst.noteOn(0); // Arduinoがタイミングを管理するためdurは0でOK
+    activeNotes[index] = new NoteJob(inst);
+    //n++;
+    println("NOTE_ON: " + index);
+    } catch (Exception e) { println("発音エラー: " + e.getMessage()); }
 }
+void readNoteOff() {
+    if (!waitForData(1)) return;
+    int index = myPort.read() & 0xFF;
+    println("NOTE_OFF " + index );
+    // ★ NOTE_OFF：対応するNoteJobのstop()を呼ぶ
+    if (activeNotes[index] != null) {
+      activeNotes[index].stop();
+      activeNotes[index] = null;
+      //println("NOTE_OFF: " + index);
+    }
+  } 
 
 boolean waitForData(int requiredBytes) {
   int waitStart = millis();
