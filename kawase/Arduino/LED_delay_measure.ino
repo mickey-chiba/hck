@@ -38,9 +38,13 @@ int getBrightness(int bpm)
         return 255;
 }
 
-unsigned long prevMillis = 0; // 前回のLED点滅切り替え時刻
-bool ledOn = false;           // LEDのON/OFF状態
-LEDmodule led1(3);            // ピン3番に接続されたLED
+unsigned long prevMillis = 0;    // 現在LEDの前回点滅切り替え時刻
+bool ledOn = false;              // 現在LEDのON/OFF状態
+LEDmodule led1(3);               // ピン3番に接続されたLED（現在の実装）
+unsigned long refPrevMillis = 0; // 基準LEDの前回点滅時刻（理想タイミング用）
+bool refLedOn = false;           // 基準LEDのON/OFF状態
+unsigned long expectedNextMs = 0; // 現在LEDの次の期待点灯時刻（ジッタ計算用）
+float ledBPM = -1;               // LEDタイミング計算に使用中のBPM（変化検出用）
 
 const char ssid[] = "WiFi_bro_colstra"; // Wi-Fiネットワークの名称
 const char pass[] = "wf215nt109rt";     // Wi-Fiのパスワード
@@ -419,12 +423,39 @@ void loop()
         // BPMから1拍あたりの間隔（ms）を計算: 60000ms ÷ BPM
         unsigned long interval = (unsigned long)(60000.0f / currentValue);
         unsigned long now = millis();
+
+        // BPM変化（または初回）で両LEDのタイミング基準をリセットする
+        if (currentValue != ledBPM)
+        {
+            prevMillis     = now;
+            refPrevMillis  = now;
+            expectedNextMs = 0; // ジッタ計算も初回扱いにリセット
+            ledBPM         = currentValue;
+        }
+
+        // 現在LED（ピン3）: 既存実装（prevMillis = now で更新）
         if (now - prevMillis >= interval)
         {
-            prevMillis = now;
-            // LEDのON/OFFをトグル（切り替え）する
+            // 2拍目以降: 期待点灯時刻との差（ジッタ）をシリアル出力する
+            if (expectedNextMs > 0)
+            {
+                long jitter = (long)now - (long)expectedNextMs;
+                Serial.print("[ジッタ] ");
+                Serial.print(jitter);
+                Serial.println(" ms");
+            }
+            expectedNextMs = prevMillis + interval; // 次の期待点灯時刻を記録
+            prevMillis = now;                       // 実際の点灯時刻で更新（既存動作）
             ledOn = !ledOn;
             led1.setBrightness(ledOn ? getBrightness((int)currentValue) : 0);
+        }
+
+        // 基準LED（LED_BUILTIN）: 理想タイミング（refPrevMillis += interval でドリフトなし）
+        if (now - refPrevMillis >= interval)
+        {
+            refPrevMillis += interval; // 実際の時刻ではなく期待時刻から次を計算する
+            refLedOn = !refLedOn;
+            digitalWrite(LED_BUILTIN, refLedOn ? HIGH : LOW);
         }
     }
 }
