@@ -155,11 +155,7 @@ void readNoteEvent() {
     bass.sus = 0.15;
     bass.rel = 0.6;
 
-    out.playNote(
-      startTime[i],
-      duration[i],
-      new InstrumentModule(bass)
-    );
+     InstrumentModule inst = new InstrumentModule(bass);
 
   
 

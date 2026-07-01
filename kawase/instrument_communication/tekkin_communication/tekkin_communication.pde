@@ -155,13 +155,7 @@ void readNoteEvent() {
     tekkin.sus = 0.5;
     tekkin.rel = 1.0;
 
-    out.playNote(
-      startTime[i],
-      duration[i],
-      new InstrumentModule(tekkin)
-    );
-
-  
+   InstrumentModule inst = new InstrumentModule(tekkin);
 
   if (onOff == 1) {
     inst.noteOn(0); // Arduinoがタイミングを管理するため0でOK

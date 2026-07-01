@@ -158,11 +158,7 @@ void readNoteEvent() {
     flute.vibratoRate  = 8.0;
     flute.vibratoDepth = 4.0;
 
-    out.playNote(
-      startTime[i],
-      duration[i] * 0.95,
-      new InstrumentModule(flute)
-    );
+    InstrumentModule inst = new InstrumentModule(flute);
 
   
 
