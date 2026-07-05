@@ -117,7 +117,7 @@ void setup(){
     myPort = new Serial(this, "dev/tty.usbmodem48CA4359FD002", 115200);
   } catch (Exception e) {  // 例外処理: ポートが開けない場合はnullのまま進む
     myPort = null;
-    println("シリアルポートなしで起動(テストモード: TキーでBPM 120をセット)");
+    println("NO SERIAL PORT (test mode: press T to set BPM 120)");
   }
   minim = new Minim(this);
   //out = minim.getLineOut();
@@ -148,7 +148,7 @@ void exit() {
   if (jitterLog != null) {
     jitterLog.flush();
     jitterLog.close();
-    println("CSVを保存しました: " + jitterLogName);
+    println("CSV saved: " + jitterLogName);
   }
   super.exit();  // 本来の終了処理を呼ぶ(これを忘れるとウィンドウが閉じない)
 }
@@ -157,7 +157,7 @@ void exit() {
 void printJitterSummary() {
   int n = (jitterValues == null) ? 0 : jitterValues.size();
   if (n == 0) {
-    println("ジッタの記録なし(BPM未受信のまま終了)");
+    println("NO JITTER DATA (no BPM received)");
     return;
   }
 
@@ -182,13 +182,13 @@ void printJitterSummary() {
   int p95Index = min(n - 1, ceil(n * 0.95) - 1);  // 95%の値が収まる位置
   float p95 = absSorted.get(p95Index);
 
-  println("===== ジッタ計測サマリー =====");
-  println("サンプル数 : " + n + " 拍");
-  println("平均       : " + nf(mean, 0, 1) + " ms");
-  println("標準偏差   : " + nf(std, 0, 1) + " ms");
-  println("最大(絶対値): " + nf(maxAbs, 0, 1) + " ms");
-  println("95%点(絶対値): " + nf(p95, 0, 1) + " ms");
-  println("==============================");
+  println("===== JITTER SUMMARY =====");
+  println("samples : " + n + " beats");
+  println("mean    : " + nf(mean, 0, 1) + " ms");
+  println("stddev  : " + nf(std, 0, 1) + " ms");
+  println("max(abs): " + nf(maxAbs, 0, 1) + " ms");
+  println("p95(abs): " + nf(p95, 0, 1) + " ms");
+  println("==========================");
 }
 
 //---
@@ -424,7 +424,8 @@ void updateLedDelay() {
     // 2拍目以降: 期待点灯時刻との差(ジッタ)をコンソール出力し、CSVにも記録する
     if (expectedNextMs > 0) {
       int jitter = now - expectedNextMs;  // 正なら遅れ、負なら早い
-      println("[ジッタ] " + jitter + " ms");
+      // Windowsのコンソールで日本語が文字化けするため、計測系の出力は英数字のみにする
+      println("[jitter] " + jitter + " ms");
       jitterLog.println(now + "," + expectedNextMs + "," + jitter + "," + nf(tempo, 0, 1));
       jitterLog.flush();  // 途中で強制終了してもデータが残るよう毎回書き出す
       jitterValues.append(jitter);
@@ -903,6 +904,6 @@ void keyPressed() {
   // テストモード: TキーでBPM 120を直接セットする(WiFi・Arduinoなしでジッタ計測できる)
   if (key == 't' || key == 'T') {
     tempo = 120.0;
-    println("テストモード: BPM " + tempo + " をセットしました(ジッタ計測開始)");
+    println("TEST MODE: BPM " + tempo + " set (jitter logging started)");
   }
 }
