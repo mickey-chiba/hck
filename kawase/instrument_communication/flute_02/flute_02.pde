@@ -1,30 +1,72 @@
 // flute_02.pde
-// flute_communication.pde に LED_delay_measure.pde（Processing版遅延計測）を結合したスケッチ。
-// Arduino からシリアルで BPM・音階データ・発音イベントを受信して演奏しつつ、
-// BPM から計算した期待点灯時刻と実際の点灯処理時刻のズレ（遅延）を計測・表示する。
+// Arduino からシリアルで BPM・ノート情報（1音ずつ）を受信して演奏しつつ、
+// FFTスペクトラム・歌詞・鍵盤・遅延計測を表示するスケッチ。
 //
-// 結合元:
-//   - flute_communication.pde : シリアル受信（0xAA/0xBB/0xCC ヘッダー）と minim での発音
-//   - LED_delay_measure.pde   : 遅延計測ロジック（期待点灯時刻とのズレ計測）
+// 構成:
+//   - シリアル受信   : 0xAA 0x55=ノート情報（index+音名+音量）、0xBB 0x66=BPM、0xCC 0x33=消音
+//   - 遅延計測       : LED_delay_measure.pde 由来。BPM から期待点灯時刻を計算し、
+//                      実際の点灯処理時刻とのズレ（ms）を右上に表示する
+//   - InstrumentConfig / InstrumentModule クラスは同フォルダの InstrumentModule.pde に定義
 
 import ddf.minim.*;
 import ddf.minim.ugens.*;
+import ddf.minim.analysis.*; // FFT解析用
 import processing.serial.*;
 import java.nio.*;
 
 Serial myPort;
 float tempo = 0.0;
-int N;
 float updatedtempo = 0.0;
 AudioOutput out;
 Minim minim;
 InstrumentModule flute;
 
-String[] melody;
+// ===== FFT =====
+FFT fft;
 
-float[] duration;
-float[] startTime;
-float[] amplitudes;
+final int numBands = 16;
+float[] bandValues = new float[numBands];
+
+float minDB = 0;
+float maxDB = 80;
+
+int fftX;
+int fftY;
+int fftW;
+int fftH;
+
+float waveCenter;
+float waveAmp;
+// ===============
+
+// ===== 歌詞 =====
+PFont font;
+
+String[] lyrics = {
+  "きらきらひかるおそらのほしよ",
+  "まばたきしてはみんなをみてる",
+  "きらきらひかるおそらのほしよ"
+};
+
+int[] lyricStart = {0, 14, 28};
+int[] lyricEnd   = {14, 28, 42};
+
+int currentLyric = 0;
+float lyricProgress = 0;
+// ==========
+
+//---鍵盤
+String[] pianoKeys = {
+  "C4","D4","E4","F4",
+  "G4","A4","B4","C5"
+};
+String[] pianoLabels = {
+  "ド","レ","ミ","ファ",
+  "ソ","ラ","シ","ド"
+};
+
+boolean[] keyOn = new boolean[pianoKeys.length];
+//----
 
 boolean dataLoaded = false;
 // テンポ管理
@@ -46,9 +88,12 @@ NoteJob[] activeNotes;           // 音を管理する配列
 class NoteJob {
   InstrumentModule inst;         // 音符を担当するinstrument
   boolean        done;
+  String noteName;               // 鍵盤表示のために音名を保持する
 
-  NoteJob(InstrumentModule i) {
-    inst = i; done = false;
+  NoteJob(InstrumentModule i, String n) {
+    inst = i;
+    noteName = n;
+    done = false;
   }
 
   void stop() {                                //音符を止めるメソッド
@@ -60,34 +105,78 @@ class NoteJob {
 }
 
 void setup(){
-  size(600, 400);
-  myPort = new Serial(this, "", 115200);    //シリアル通信の設定(""にはArduinoのポート番号を入力)
+  size(1100, 1000);
+  updateLayout();
+  font = createFont("YuMin-Medium", 42, true);
+  textFont(font);
+  // シリアル通信の設定（Arduinoのポートパスは環境に合わせて変更する）
+  myPort = new Serial(this, "/dev/tty.usbmodem48CA4359FD002", 115200);
   minim = new Minim(this);
-  out = minim.getLineOut();
-
-  // draw()の呼び出し間隔がそのまま遅延計測の分解能になるため、
-  // 上限いっぱいまで回るよう高い値を要求する（実際の速度は環境依存）
-  frameRate(1000);
-
+  out = minim.getLineOut(Minim.STEREO,1024);
+  fft = new FFT(out.bufferSize(), out.sampleRate());
+  activeNotes = new NoteJob[100];
   myPort.write(0xDD);
   println("start!");
   myPort.clear();
 }
 
+//---
+void windowResized() {
+    updateLayout();
+}
+//---
+
+//---
+void updateLayout() {
+
+  // FFT
+  fftX = int(width * 0.03);
+  fftY = int(height * 0.70);
+  fftW = int(width * 0.94);
+  fftH = int(height * 0.25);
+
+  // 波形
+  waveCenter = height * 0.50;
+  waveAmp = height * 0.12;
+}
+//---
+
+
 void draw() {
   checkdata();
   background(0);
   stroke(255);
-  for(int i = 0; i < out.bufferSize() - 1; i++)        //波形の表示処理
-  {
-    line( i, 50 + out.left.get(i)*50, i+1, 50 + out.left.get(i+1)*50 );
+  for (int x = 0; x < width - 1; x++) {
+
+  int i1 = int(map(x, 0, width - 1, 0, out.bufferSize() - 1));
+  int i2 = int(map(x + 1, 0, width - 1, 0, out.bufferSize() - 1));
+
+  line(
+    x,
+    waveCenter + out.left.get(i1) * waveAmp,
+    x + 1,
+    waveCenter + out.left.get(i2) * waveAmp
+  );
   }
+  //---
+  fft.forward(out.mix);
+
+  updateSpectrum();
+
+  drawSpectrum();
+
+  updateLyrics();
+  drawLyrics();
+
+  updateKeyboard();
+  drawKeyboard();
 
   measureDelay();   // 遅延計測とLED表示（LED_delay_measure.pde から結合）
+  //---
 }
 
 // BPMに合わせてLED（円）を点灯し、今回の遅延（ズレ）だけを計測する
-// （LED_delay_measure.pde の draw() 内の計測ブロックを関数化したもの）
+// （LED_delay_measure.pde の計測ブロック。表示は画面右上）
 void measureDelay() {
   if (tempo > 0) {
     long interval_ms = (long)(60000.0 / tempo);  // 1拍の長さ（ms）へ型キャスト
@@ -109,18 +198,129 @@ void measureDelay() {
     }
   }
 
-  // LEDの代わりに円を描画する（三項演算子で点灯時は白、消灯時は暗灰色を選ぶ）
+  // LEDの代わりに円を右上へ描画する（三項演算子で点灯時は白、消灯時は暗灰色を選ぶ）
   noStroke();
   fill(ledOn ? 255 : 40);
-  ellipse(width / 2, height / 2 + 40, 120, 120);
+  float d = height * 0.05;
+  ellipse(width * 0.93, height * 0.06, d, d);
 
-  // 現在のBPMと直近の遅延を画面に表示する
-  // （デフォルトフォントは日本語を描画できないため表示文字列は英数字のみ）
+  // 直近の遅延値をLED円の下に表示する
   fill(255);
-  textAlign(CENTER);
-  text("BPM: " + nf(tempo, 0, 1), width / 2, height - 40);
-  text("delay: " + lastJitter + " ms", width / 2, height - 20);
+  textAlign(CENTER, TOP);
+  textSize(height * 0.018);
+  text("delay: " + lastJitter + " ms", width * 0.93, height * 0.06 + d * 0.7);
 }
+
+//----
+void updateSpectrum() {
+
+  for (int i = 0; i < numBands; i++) {
+
+    int index =
+      int(map(i,0,numBands,0,fft.specSize()));
+
+    float value = fft.getBand(index);
+
+    bandValues[i] = 20 * log(value + 1);
+
+    bandValues[i] =
+      constrain(bandValues[i],minDB,maxDB);
+  }
+}
+//----
+
+//----
+void drawSpectrum() {
+
+  float barWidth = fftW/(float)numBands;
+
+  noStroke();
+
+  for(int i=0;i<numBands;i++){
+
+    float x=fftX+i*barWidth;
+
+    float h=
+      map(bandValues[i],
+          minDB,maxDB,
+          0,fftH);
+
+    fill(
+      map(i,0,numBands-1,50,255),
+      map(h,0,fftH,80,220),
+      map(i,0,numBands-1,255,80)
+    );
+
+    rect(
+      x+3,
+      fftY+fftH-h,
+      barWidth-6,
+      h
+    );
+  }
+
+  stroke(120);
+  noFill();
+  rect(fftX,fftY,fftW,fftH);
+
+  drawAxis();
+}
+//----
+
+//----
+void drawAxis() {
+
+  stroke(180);
+  fill(255);
+  textSize(height * 0.015);
+
+  // ===== 縦軸(dB) =====
+  int divY = 4;
+
+  for (int i = 0; i <= divY; i++) {
+
+    float y = map(i, 0, divY, fftY + fftH, fftY);
+
+    line(fftX - 5, y, fftX, y);
+
+    float value = map(i, 0, divY, minDB, maxDB);
+
+    textAlign(RIGHT, CENTER);
+    text(int(value), fftX - 10, y);
+  }
+
+  // 縦軸タイトル
+  pushMatrix();
+  translate(fftX - 50, fftY + fftH/2);
+  rotate(-HALF_PI);
+  textAlign(CENTER, CENTER);
+  text("Level", 0, 0);
+  popMatrix();
+
+
+  // ===== 横軸(Hz) =====
+  textAlign(CENTER, TOP);
+
+  for (int i = 0; i < numBands; i++) {
+
+    float x = fftX + (i + 0.5) * fftW / numBands;
+
+    int bandIndex = int(map(i, 0, numBands, 0, fft.specSize()));
+    int freq = int(fft.indexToFreq(bandIndex));
+
+    line(x, fftY + fftH, x, fftY + fftH + 5);
+
+    if (freq >= 1000)
+      text(nf(freq / 1000.0, 0, 1) + "k", x, fftY + fftH + 8);
+    else
+      text(freq, x, fftY + fftH + 8);
+  }
+
+  // 横軸タイトル
+  textAlign(CENTER);
+  text("Frequency (Hz)", fftX + fftW/2, fftY + fftH + 35);
+}
+//----
 
 void checkdata() {                //データの処理を行う関数
   if (myPort.available() < 1) return;
@@ -130,7 +330,7 @@ void checkdata() {                //データの処理を行う関数
     int b2 = myPort.read();
     if (b2 == 0x55)  {
       if(!dataLoaded) {
-        readData();
+        readNote();
       }
     }
   }else if (b1 == 0xBB) {
@@ -145,7 +345,7 @@ void checkdata() {                //データの処理を行う関数
     // 発音ヘッダー
     if (!waitForData(1)) return;
     if (myPort.read() != 0x33) return;
-    readNoteEvent();
+    readNoteOff();
 
   }
 
@@ -163,7 +363,7 @@ void readbpm() {
       println("現在のBPM:" + tempo);
 
       // BPM受信時刻と次の期待点灯時刻を記録する
-      // （LED_delay_measure.pde の applyBpm() ＝ Arduino版のUDP受信ブロックに相当）
+      // （LED_delay_measure.pde の遅延計測の起点。Arduino版のUDP受信ブロックに相当）
       if (tempo > 0) {   // ゼロ除算を避けるガード
         receiveTime = millis();  // millis()はint返しだがlongへ暗黙の拡大変換で代入される
         long interval_ms = (long)(60000.0 / tempo);
@@ -172,38 +372,40 @@ void readbpm() {
       }
   }
  }
-void readNoteEvent() {
-  if (!waitForData(2)) { myPort.clear(); return; }
 
-  int index  = myPort.read() & 0xFF; // 音符インデックス
-  int onOff  = myPort.read() & 0xFF; // 1=ON 0=OFF
+void readNote() {
+  if (!waitForData(1)) return;
+  int index = myPort.read() & 0xFF; //  インデックスを受信
+  if (!waitForData(1)) return;
+  int namelen = myPort.read() & 0xFF;
+  println(namelen);
 
-  if (activeNotes == null && N > 0) {
-    activeNotes = new NoteJob[N];
-    println("readNoteEvent内でactiveNotes初期化 N=" + N);
-  }
-  if (index < 0 || index >= N) {
-    println("index範囲外: " + index + " N=" + N);
-    return;
-  }
+  if (!waitForData(namelen)) return;
+  byte[] nameBuf = myPort.readBytes(namelen);
+  String noteName = new String(nameBuf, java.nio.charset.StandardCharsets.UTF_8);
+  println("NOTE:" + noteName);
+  if (!waitForData(4)) return;
+  byte[] ampBuf = myPort.readBytes(4);
+  ByteBuffer bb = ByteBuffer.wrap(ampBuf);
+  bb.order(ByteOrder.LITTLE_ENDIAN);
+  float amp = bb.getFloat();
+  println("amplitude" + amp);
 
   InstrumentConfig flute = new InstrumentConfig();
 
     flute.out = out;
     flute.waves = new String[] { "SINE", "SINE", "SINE", "SINE", "SINE" };
 
-    // melody[index] の音階名を周波数に変換して、この音の基音にする
-    flute.baseFreq = Frequency.ofPitch(melody[index]).asHz();
+    // 受信した音階名を周波数に変換して、この音の基音にする
+    flute.baseFreq = Frequency.ofPitch(noteName).asHz();
 
     flute.harmonics = new float[] { 0.9, 1.0, 0.05, 0.01, 0.002 };
     flute.cutoff = 950.0;
     flute.res = 0.0;
     flute.filterMode = 0;
 
-    // amplitudes[index] を使って、音ごとの強弱を変える
-    // （結合元の flute_communication.pde ではループ外の未定義変数 i を
-    //   参照していたため index に修正）
-    flute.vol = amplitudes[index];
+    // 受信した amp を使って、音ごとの強弱を変える
+    flute.vol = amp;
 
     flute.atk = 0.02;
     flute.dec = 0.5;
@@ -216,91 +418,25 @@ void readNoteEvent() {
     InstrumentModule inst = new InstrumentModule(flute);
 
 
+    // 例外処理（try-catch）で発音時のエラーを捕捉してスケッチ停止を防ぐ
+    try {
+    //  NOTE_ON：meloinstrumentを生成してnoteOn()を直接呼ぶ
+    inst.noteOn(0); // Arduinoがタイミングを管理するためdurは0でOK
+    activeNotes[index] = new NoteJob(inst, noteName);
+    println("NOTE_ON: " + index);
+    } catch (Exception e) { println("発音エラー: " + e.getMessage()); }
+}
 
-  if (onOff == 1) {
-    inst.noteOn(0); // Arduinoがタイミングを管理するため0でOK
-    activeNotes[index] = new NoteJob(inst);  //クラスの配列に発音した情報を記録する
-    println("NOTE_ON: " + melody[index]);
-
-  } else if (onOff == 0) {
+void readNoteOff() {
+    if (!waitForData(1)) return;
+    int index = myPort.read() & 0xFF;
+    println("NOTE_OFF " + index );
     // NOTE_OFF：対応するNoteJobのstop()を呼ぶ
     if (activeNotes[index] != null) {
       activeNotes[index].stop();
       activeNotes[index] = null;
-      println("NOTE_OFF: " + index);
     }
   }
-}
-void readData() {
-
-  if (!waitForData(1)) return;
-  N = myPort.read() & 0xFF;
-  if (N <= 0 || N > 100) {
-    println("invalid N:", N);
-    N = 0;
-    return;
-  }
-  activeNotes = new NoteJob[N];
-//string配列受信
-  melody = new String[N];
-  for (int i = 0; i < N; i++) {
-    if (!waitForData(1)) {
-      println("String長さ受信タイムアウト i=" + i);
-      return;
-    }
-    int strLen = myPort.read() & 0xFF;
-
-    if (!waitForData(strLen)) {
-      println("String本体受信タイムアウト i=" + i);
-      return;
-    }
-    byte[] strBuf = myPort.readBytes(strLen);
-    melody[i] = new String(strBuf, java.nio.charset.StandardCharsets.UTF_8);
-  }
-  println("melody");
-  printArray(melody);
-
-  //各配列受信
-  int totalBytes = N * 4 * 1;     //要素数 * バイト数 * 配列数
-
-  if (!waitForData(totalBytes)) {
-    println("配列データの受信タイムアウト");
-    println("  → Processingが待っていたバイト数: " + totalBytes + " バイト");
-    println("  → 実際にシリアルポートに届いたバイト数: " + myPort.available() + " バイト");
-    println("--------------------------------------------------");
-    return;
-  }
-
-  byte[] buf = myPort.readBytes(totalBytes);
-  ByteBuffer bb = ByteBuffer.wrap(buf);
-  bb.order(ByteOrder.LITTLE_ENDIAN);
-
-  amplitudes = new float[N];
-  // 4番目：amplitudes
-  for (int i = 0; i < N; i++) {
-    amplitudes[i] = bb.getFloat();
-  }
-
-
-
-  println("amplitudes");
-  printArray(amplitudes);
-
-  println("受信成功");
-  if (activeNotes != null) {
-    for (int i = 0; i < activeNotes.length; i++) {
-      if (activeNotes[i] != null) {
-        activeNotes[i].stop();
-        activeNotes[i] = null;
-      }
-    }
-  }
-  dataLoaded = true;
-  activeNotes = new NoteJob[N];
-  myPort.write(0xFF);
-  println("READY送信");
-  myPort.clear();
-}
 
 boolean waitForData(int requiredBytes) {
   int waitStart = millis();
@@ -311,4 +447,150 @@ boolean waitForData(int requiredBytes) {
     delay(1);
   }
   return true;
+}
+
+void updateLyrics() {
+
+  int note = -1;
+
+  for (int i = 0; i < activeNotes.length; i++) {
+    if (activeNotes[i] != null) {
+      note = i;
+    }
+  }
+
+  if (note < 0) return;
+
+  for (int i = 0; i < lyrics.length; i++) {
+
+    if (note >= lyricStart[i] &&
+        note < lyricEnd[i]) {
+
+      currentLyric = i;
+
+      lyricProgress =
+      (note - lyricStart[i] + 1) /
+      float(lyricEnd[i] - lyricStart[i]);
+
+      break;
+    }
+  }
+}
+
+void drawLyrics() {
+
+  textSize(height*0.05);
+  textAlign(CENTER,CENTER);
+
+  float y = height*0.12;
+
+  String lyric = lyrics[currentLyric];
+
+  float tw = textWidth(lyric);
+
+  float left = width/2 - tw/2;
+
+  fill(255);
+  text(lyric,width/2,y);
+
+  push();
+
+  // clip()で描画領域を切り取り、歌詞の進行部分だけを黄色で重ね描きする
+  clip(
+    int(left),
+    int(y-35),
+    int(tw*lyricProgress),
+    70
+  );
+
+  fill(255,220,0);
+
+  text(lyric,width/2,y);
+
+  noClip();
+
+  pop();
+}
+
+void updateKeyboard() {
+
+  for (int i = 0; i < keyOn.length; i++) {
+    keyOn[i] = false;
+  }
+
+  for (int i = 0; i < activeNotes.length; i++) {
+
+    if (activeNotes[i] != null) {
+
+      String n = activeNotes[i].noteName;
+
+      for (int k = 0; k < pianoKeys.length; k++) {
+
+        if (n.equals(pianoKeys[k])) {
+          keyOn[k] = true;
+        }
+      }
+    }
+  }
+}
+
+void drawKeyboard() {
+
+  float totalWidth = width * 0.70;
+  float keyWidth = totalWidth / pianoKeys.length;
+
+  float left = width/2 - totalWidth/2;
+
+  float y = height * 0.24;
+  float h = height * 0.10;
+
+  stroke(0);
+
+  textAlign(CENTER, CENTER);
+  textSize(height * 0.022);
+
+  for (int i = 0; i < pianoKeys.length; i++) {
+
+    float yy = y;
+
+    if (keyOn[i]) {
+      fill(255, 220, 0);   // 光る
+      yy += 4;             // 少し沈む
+    } else {
+      fill(255);
+    }
+
+    rect(left + i * keyWidth,
+         yy,
+         keyWidth,
+         h);
+
+    fill(0);
+
+    text(
+      pianoLabels[i],
+      left + i * keyWidth + keyWidth/2,
+      yy + h/2
+    );
+  }
+}
+
+
+void keyPressed() {
+  // ENTERキーで演奏をリスタートする（FFT・発音管理・遅延計測を初期化して開始信号を再送）
+  if (key == ENTER || key == RETURN){
+     fft = new FFT(out.bufferSize(), out.sampleRate());
+     activeNotes = new NoteJob[100];
+
+     // 遅延計測もリセットする（次のBPM受信で再初期化される）
+     tempo        = 0;
+     receiveTime  = 0;
+     expectedTime = 0;
+     ledOn        = false;
+     lastJitter   = 0;
+
+     myPort.write(0xDD);
+     println("start!");
+     myPort.clear();
+  }
 }
