@@ -62,9 +62,18 @@ String[] pianoLabels = {
 boolean[] keyOn = new boolean[pianoKeys.length];
 //----
 
-boolean dataLoaded = false; 
-// テンポ管理 
+boolean dataLoaded = false;
+// テンポ管理
 float   currentBPM = 0;
+
+// ===== LED遅延検出(Arduino側 LED_delay_measure.ino の移植) =====
+int     prevMillis     = 0;     // 実LEDの前回点滅切り替え時刻
+boolean ledOn          = false; // 実LEDのON/OFF状態
+int     refPrevMillis  = 0;     // 基準LEDの前回点滅時刻(理想タイミング用)
+boolean refLedOn       = false; // 基準LEDのON/OFF状態
+int     expectedNextMs = 0;     // 実LEDの次の期待点灯時刻(ジッタ計算用)
+float   ledBPM         = -1;    // LEDタイミング計算に使用中のBPM(変化検出用)
+// ==============================================================
 
 // musicalTime管理 
 boolean   playing     = false;
@@ -160,6 +169,10 @@ void draw() {
   
   updateKeyboard();
   drawKeyboard();
+
+  // BPM同期LEDの点滅更新とジッタ計測・仮想LED描画
+  updateLedDelay();
+  drawLedIndicators();
   //---
 }
 
@@ -313,9 +326,68 @@ void readbpm() {
       bb.order(ByteOrder.LITTLE_ENDIAN);
       tempo = bb.getFloat();
       println("現在のBPM:" + tempo);
-      }    
+      }
   }
  }
+
+// BPM同期LEDの点滅とジッタ計測(Arduino側 loop() 末尾の処理と同じロジック)
+void updateLedDelay() {
+  if (tempo <= 0) return;  // BPM未受信の間は動作しない
+
+  // BPMから1拍あたりの間隔(ms)を計算: 60000ms ÷ BPM
+  int interval = int(60000.0 / tempo);
+  int now = millis();
+
+  // BPM変化(または初回)で両LEDのタイミング基準をリセットする
+  if (tempo != ledBPM) {
+    prevMillis = now;
+    refPrevMillis = now;
+    expectedNextMs = 0;  // ジッタ計算も初回扱いにリセット
+    ledBPM = tempo;
+  }
+
+  // 実LED: 実際の点灯時刻(now)で基準を更新する(Arduinoのピン3側と同じ)
+  if (now - prevMillis >= interval) {
+    // 2拍目以降: 期待点灯時刻との差(ジッタ)をコンソール出力する
+    if (expectedNextMs > 0) {
+      int jitter = now - expectedNextMs;  // 正なら遅れ、負なら早い
+      println("[ジッタ] " + jitter + " ms");
+    }
+    expectedNextMs = prevMillis + interval;  // 次の期待点灯時刻を記録
+    prevMillis = now;                        // 実際の点灯時刻で更新
+    ledOn = !ledOn;
+  }
+
+  // 基準LED: 期待時刻から次を計算するためドリフトしない(LED_BUILTIN側と同じ)
+  if (now - refPrevMillis >= interval) {
+    refPrevMillis += interval;
+    refLedOn = !refLedOn;
+  }
+}
+
+// 実LEDと基準LEDを画面右上に描画する(物理LEDの代わりの仮想LED)
+void drawLedIndicators() {
+  float r = height * 0.018;       // LEDの半径
+  float x = width  * 0.90;
+  float y = height * 0.04;
+
+  noStroke();
+  textSize(height * 0.015);
+  textAlign(CENTER, TOP);
+
+  // 実LED(ジッタ計測対象)
+  fill(ledOn ? color(255, 60, 60) : color(70, 20, 20));
+  ellipse(x, y, r * 2, r * 2);
+  fill(255);
+  text("実LED", x, y + r + 4);
+
+  // 基準LED(理想タイミング)
+  float x2 = x + r * 4;
+  fill(refLedOn ? color(60, 255, 60) : color(20, 70, 20));
+  ellipse(x2, y, r * 2, r * 2);
+  fill(255);
+  text("基準", x2, y + r + 4);
+}
 
 void readNote() {
 //  while (myPort.available() > 0) {
@@ -743,6 +815,7 @@ void keyPressed() {
   if (key == ENTER || key == RETURN){
       fft = new FFT(out.bufferSize(), out.sampleRate());
      activeNotes = new NoteJob[100];
+     ledBPM = -1;  // 再スタート時はLED遅延計測もリセット(次フレームで基準を取り直す)
      myPort.write(0xDD);
      println("start!");
      myPort.clear();
