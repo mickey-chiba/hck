@@ -429,8 +429,9 @@ void updateLedDelay() {
       jitterLog.flush();  // 途中で強制終了してもデータが残るよう毎回書き出す
       jitterValues.append(jitter);
     }
-    expectedNextMs = prevMillis + interval;  // 次の期待点灯時刻を記録
-    prevMillis = now;                        // 実際の点灯時刻で更新
+    prevMillis = now;                    // 実際の点灯時刻で更新
+    expectedNextMs = now + interval;     // 次の期待点灯時刻 = 今回の実点灯 + 1拍
+                                         // (更新前のprevMillisを使うと1拍ズレた値になる)
     ledOn = !ledOn;
   }
 

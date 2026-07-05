@@ -444,8 +444,9 @@ void loop()
                 Serial.print(jitter);
                 Serial.println(" ms");
             }
-            expectedNextMs = prevMillis + interval; // 次の期待点灯時刻を記録
-            prevMillis = now;                       // 実際の点灯時刻で更新（既存動作）
+            prevMillis = now;                   // 実際の点灯時刻で更新（既存動作）
+            expectedNextMs = now + interval;    // 次の期待点灯時刻 = 今回の実点灯 + 1拍
+                                                // (更新前のprevMillisを使うと1拍ズレた値になる)
             ledOn = !ledOn;
             led1.setBrightness(ledOn ? getBrightness((int)currentValue) : 0);
         }
