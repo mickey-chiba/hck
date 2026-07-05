@@ -111,7 +111,14 @@ void setup(){
   updateLayout();
   font = createFont("YuMin-Medium", 42, true);
   textFont(font);
-  myPort = new Serial(this, "dev/tty.usbmodem48CA4359FD002", 115200);    //シリアル通信の設定(""にはArduinoのポート番号を入力)
+  // シリアル通信の設定(""にはArduinoのポート番号を入力)
+  // Arduino未接続でもジッタ計測のテストができるよう、失敗しても止まらずに続行する
+  try {
+    myPort = new Serial(this, "dev/tty.usbmodem48CA4359FD002", 115200);
+  } catch (Exception e) {  // 例外処理: ポートが開けない場合はnullのまま進む
+    myPort = null;
+    println("シリアルポートなしで起動(テストモード: TキーでBPM 120をセット)");
+  }
   minim = new Minim(this);
   //out = minim.getLineOut();
   //-----
@@ -127,9 +134,11 @@ void setup(){
   jitterLog.println("actual_ms,expected_ms,jitter_ms,bpm");  // CSVヘッダー
   jitterValues = new FloatList();
 
-  myPort.write(0xDD);
-  println("start!");
-  myPort.clear();
+  if (myPort != null) {
+    myPort.write(0xDD);
+    println("start!");
+    myPort.clear();
+  }
 }
 
 // スケッチ終了時(ESCキーやウィンドウを閉じたとき)に呼ばれる関数をオーバーライドして、
@@ -351,7 +360,8 @@ void drawAxis() {
 //----
 
 void checkdata() {                //データの処理を行う関数
-  if (myPort.available() < 1) return;   
+  if (myPort == null) return;           // シリアル未接続(テストモード)なら何もしない
+  if (myPort.available() < 1) return;
   int b1 = myPort.read();
   if(b1 == 0xAA){
     if (!waitForData(1)) return;
@@ -882,9 +892,16 @@ void keyPressed() {
       fft = new FFT(out.bufferSize(), out.sampleRate());
      activeNotes = new NoteJob[100];
      ledBPM = -1;  // 再スタート時はLED遅延計測もリセット(次フレームで基準を取り直す)
-     myPort.write(0xDD);
-     println("start!");
-     myPort.clear();
+     if (myPort != null) {
+       myPort.write(0xDD);
+       println("start!");
+       myPort.clear();
+     }
      draw();
+  }
+  // テストモード: TキーでBPM 120を直接セットする(WiFi・Arduinoなしでジッタ計測できる)
+  if (key == 't' || key == 'T') {
+    tempo = 120.0;
+    println("テストモード: BPM " + tempo + " をセットしました(ジッタ計測開始)");
   }
 }
