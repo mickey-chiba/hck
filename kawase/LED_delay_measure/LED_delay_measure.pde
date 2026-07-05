@@ -351,19 +351,16 @@ void readNote() {
     flute.out = out;
     flute.waves = new String[] { "SINE", "SINE", "SINE", "SINE", "SINE" };
 
-    // melody[i] の音階名を周波数に変換して、この音の基音にする
-    flute.baseFreq = Frequency.ofPitch(melody[index]).asHz();
-    // flute.baseFreq = Frequency.ofPitch(pitch).asHz();
+    // 受信した音階名(noteName)を周波数に変換して、この音の基音にする
+    flute.baseFreq = Frequency.ofPitch(noteName).asHz();
 
     flute.harmonics = new float[] { 0.9, 1.0, 0.05, 0.01, 0.002 };
     flute.cutoff = 950.0;
     flute.res = 0.0;
     flute.filterMode = 0;
 
-    // amplitudes[i] を使って、音ごとの強弱を変える
-    flute.vol = amplitudes[i];
-
-    //flute.noiseVol = amplitudes[i] * 0.05;
+    // 受信した振幅(amp)を使って、音ごとの強弱を変える
+    flute.vol = amp;
 
     flute.atk = 0.02;
     flute.dec = 0.5;
