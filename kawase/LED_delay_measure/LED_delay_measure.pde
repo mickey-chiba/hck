@@ -73,6 +73,11 @@ int     refPrevMillis  = 0;     // 基準LEDの前回点滅時刻(理想タイ�
 boolean refLedOn       = false; // 基準LEDのON/OFF状態
 int     expectedNextMs = 0;     // 実LEDの次の期待点灯時刻(ジッタ計算用)
 float   ledBPM         = -1;    // LEDタイミング計算に使用中のBPM(変化検出用)
+
+// ジッタのCSV記録用
+PrintWriter jitterLog;               // CSVファイルへの書き込みストリーム
+FloatList   jitterValues;            // サマリー計算用にジッタ値を貯めるリスト(Processing組み込みの可変長float配列)
+String      jitterLogName;           // 保存したCSVのファイル名(終了時の案内表示用)
 // ==============================================================
 
 // musicalTime管理 
@@ -114,9 +119,67 @@ void setup(){
   fft = new FFT(out.bufferSize(), out.sampleRate());
   //-----
   activeNotes = new NoteJob[100];
+
+  // ジッタ記録の準備: 実行日時入りのファイル名でCSVを開き、ヘッダー行を書く
+  jitterLogName = String.format("jitter_log_%04d%02d%02d_%02d%02d%02d.csv",
+    year(), month(), day(), hour(), minute(), second());
+  jitterLog = createWriter(jitterLogName);   // スケッチフォルダ内に作成される
+  jitterLog.println("actual_ms,expected_ms,jitter_ms,bpm");  // CSVヘッダー
+  jitterValues = new FloatList();
+
   myPort.write(0xDD);
   println("start!");
   myPort.clear();
+}
+
+// スケッチ終了時(ESCキーやウィンドウを閉じたとき)に呼ばれる関数をオーバーライドして、
+// サマリー表示とCSVのクローズを確実に行う
+void exit() {
+  printJitterSummary();
+  if (jitterLog != null) {
+    jitterLog.flush();
+    jitterLog.close();
+    println("CSVを保存しました: " + jitterLogName);
+  }
+  super.exit();  // 本来の終了処理を呼ぶ(これを忘れるとウィンドウが閉じない)
+}
+
+// 記録したジッタの統計サマリーをコンソールに表示する
+void printJitterSummary() {
+  int n = (jitterValues == null) ? 0 : jitterValues.size();
+  if (n == 0) {
+    println("ジッタの記録なし(BPM未受信のまま終了)");
+    return;
+  }
+
+  // 平均を計算
+  float mean = jitterValues.sum() / n;
+
+  // 標準偏差(ジッタのバラつき)を計算
+  float sqSum = 0;
+  for (int i = 0; i < n; i++) {
+    float d = jitterValues.get(i) - mean;
+    sqSum += d * d;
+  }
+  float std = sqrt(sqSum / n);
+
+  // 絶対値でソートしたコピーを作り、最大値と95パーセンタイルを求める
+  FloatList absSorted = new FloatList();
+  for (int i = 0; i < n; i++) {
+    absSorted.append(abs(jitterValues.get(i)));
+  }
+  absSorted.sort();
+  float maxAbs = absSorted.get(n - 1);
+  int p95Index = min(n - 1, ceil(n * 0.95) - 1);  // 95%の値が収まる位置
+  float p95 = absSorted.get(p95Index);
+
+  println("===== ジッタ計測サマリー =====");
+  println("サンプル数 : " + n + " 拍");
+  println("平均       : " + nf(mean, 0, 1) + " ms");
+  println("標準偏差   : " + nf(std, 0, 1) + " ms");
+  println("最大(絶対値): " + nf(maxAbs, 0, 1) + " ms");
+  println("95%点(絶対値): " + nf(p95, 0, 1) + " ms");
+  println("==============================");
 }
 
 //---
@@ -348,10 +411,13 @@ void updateLedDelay() {
 
   // 実LED: 実際の点灯時刻(now)で基準を更新する(Arduinoのピン3側と同じ)
   if (now - prevMillis >= interval) {
-    // 2拍目以降: 期待点灯時刻との差(ジッタ)をコンソール出力する
+    // 2拍目以降: 期待点灯時刻との差(ジッタ)をコンソール出力し、CSVにも記録する
     if (expectedNextMs > 0) {
       int jitter = now - expectedNextMs;  // 正なら遅れ、負なら早い
       println("[ジッタ] " + jitter + " ms");
+      jitterLog.println(now + "," + expectedNextMs + "," + jitter + "," + nf(tempo, 0, 1));
+      jitterLog.flush();  // 途中で強制終了してもデータが残るよう毎回書き出す
+      jitterValues.append(jitter);
     }
     expectedNextMs = prevMillis + interval;  // 次の期待点灯時刻を記録
     prevMillis = now;                        // 実際の点灯時刻で更新
