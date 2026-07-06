@@ -348,27 +348,27 @@ void readNote() {
     
   InstrumentConfig trumpet = new InstrumentConfig();    //閾値は各楽器のパラメータによって変更してください
     trumpet.out = out;
-    trumpet.waves = new String[] { "SAW", "SQUARE" };
+    trumpet.waves = new String[] { "SINE" };
 
     // melody[i] の音階名を周波数に変換して、この音の基音にする
     trumpet.baseFreq = Frequency.ofPitch(noteName).asHz();
 
-    trumpet.harmonics = new float[] { 1.0, 0.8, 0.9, 0.7, 0.4, 0.35, 0.3 };
-    trumpet.cutoff = 2000.0;
-    trumpet.res = 0.1;
+    trumpet.harmonics = new float[] { 0.3, 1.0, 0.9, 0.5, 0.25, 0.1 };
+    trumpet.cutoff = 3500.0;
+    trumpet.res = 0.4;
     trumpet.filterMode = 0;
-    trumpet.fcoRate = 0.0;
-    trumpet.fcoAmount = 1000.0;
+    trumpet.fcoRate = 3.0;
+    trumpet.fcoAmount = 500.0;
 
     // amplitudes[i] を使って、音ごとの強弱を変える
     trumpet.vol = amp;
 
-    trumpet.atk = 0.145;
-    trumpet.dec = 0.12;
-    trumpet.sus = 0.7;
-    trumpet.rel = 0.3;
-    trumpet.vibratoRate  = 2.0;
-    trumpet.vibratoDepth = 1.0;
+    trumpet.atk = 0.02;
+    trumpet.dec = 0.08;
+    trumpet.sus = 0.85;
+    trumpet.rel = 0.1;
+    trumpet.vibratoRate  = 5.5;
+    trumpet.vibratoDepth = 1.5;
 
 
     InstrumentModule inst = new InstrumentModule(trumpet);
