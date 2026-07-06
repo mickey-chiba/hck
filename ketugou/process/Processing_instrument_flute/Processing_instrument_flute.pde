@@ -51,8 +51,8 @@ float lyricProgress = 0;
 
 //---鍵盤
 String[] pianoKeys = {
-  "C4","D4","E4","F4",
-  "G4","A4","B4","C5"
+  "C5","D5","E5","F5",
+  "G5","A5","B5","C6"
 };
 String[] pianoLabels = {
   "ド","レ","ミ","ファ",
@@ -97,7 +97,7 @@ void setup(){
   updateLayout();
   font = createFont("YuMin-Medium", 42, true);
   textFont(font);
-  myPort = new Serial(this, "dev/tty.usbmodem48CA4359FD002", 115200);    //シリアル通信の設定(""にはArduinoのポート番号を入力)
+  myPort = new Serial(this, "", 115200);    //シリアル通信の設定(""にはArduinoのポート番号を入力)
   minim = new Minim(this);
   //out = minim.getLineOut();
   //-----
@@ -327,7 +327,7 @@ void readNote() {
   int index = myPort.read() & 0xFF; //  インデックスを受信
   if (!waitForData(1)) return;
   int namelen = myPort.read() & 0xFF;
-  println(namelen);
+  //println(namelen);
   
   if (!waitForData(namelen)) return;
   byte[] nameBuf = myPort.readBytes(namelen);
@@ -344,7 +344,7 @@ void readNote() {
   ByteBuffer bb = ByteBuffer.wrap(ampBuf);
   bb.order(ByteOrder.LITTLE_ENDIAN);
   float amp = bb.getFloat();
-  println("amplitude" + amp);
+  //println("amplitude" + amp);
     
   InstrumentConfig flute = new InstrumentConfig();
 
@@ -352,7 +352,7 @@ void readNote() {
     flute.waves = new String[] { "SINE", "SINE", "SINE", "SINE", "SINE" };
 
     // melody[i] の音階名を周波数に変換して、この音の基音にする
-    flute.baseFreq = Frequency.ofPitch(melody[index]).asHz();
+    flute.baseFreq = Frequency.ofPitch(noteName).asHz();
     // flute.baseFreq = Frequency.ofPitch(pitch).asHz();
 
     flute.harmonics = new float[] { 0.9, 1.0, 0.05, 0.01, 0.002 };
@@ -360,8 +360,8 @@ void readNote() {
     flute.res = 0.0;
     flute.filterMode = 0;
 
-    // amplitudes[i] を使って、音ごとの強弱を変える
-    flute.vol = amplitudes[i];
+    // amp を使って、音ごとの強弱を変える
+    flute.vol = amp;
 
     //flute.noiseVol = amplitudes[i] * 0.05;
 
@@ -749,6 +749,5 @@ void keyPressed() {
      myPort.write(0xDD);
      println("start!");
      myPort.clear();
-     draw();
   }
 }
