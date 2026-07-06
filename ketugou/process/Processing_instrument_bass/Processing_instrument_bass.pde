@@ -51,8 +51,8 @@ float lyricProgress = 0;
 
 //---鍵盤
 String[] pianoKeys = {
-  "C4","D4","E4","F4",
-  "G4","A4","B4","C5"
+  "C2","D2","E2","F2",
+  "G2","A2","B2","C3"
 };
 String[] pianoLabels = {
   "ド","レ","ミ","ファ",
@@ -327,7 +327,7 @@ void readNote() {
   int index = myPort.read() & 0xFF; //  インデックスを受信
   if (!waitForData(1)) return;
   int namelen = myPort.read() & 0xFF;
-  println(namelen);
+  //println(namelen);
   
   if (!waitForData(namelen)) return;
   byte[] nameBuf = myPort.readBytes(namelen);
@@ -344,7 +344,7 @@ void readNote() {
   ByteBuffer bb = ByteBuffer.wrap(ampBuf);
   bb.order(ByteOrder.LITTLE_ENDIAN);
   float amp = bb.getFloat();
-  println("amplitude" + amp);
+  //println("amplitude" + amp);
     
   InstrumentConfig bass = new InstrumentConfig();
 
@@ -352,7 +352,7 @@ void readNote() {
     bass.waves = new String[] { "SINE", "TRIANGLE" };
 
     // melody[i] の音階名を周波数に変換して、この音の基音にする
-    bass.baseFreq = Frequency.ofPitch(melody[index]).asHz();
+    bass.baseFreq = Frequency.ofPitch(noteName).asHz();
     
 
     bass.harmonics = new float[] {1.0, 0.3 };
@@ -746,6 +746,5 @@ void keyPressed() {
      myPort.write(0xDD);
      println("start!");
      myPort.clear();
-     draw();
   }
 }
