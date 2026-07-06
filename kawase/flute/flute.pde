@@ -82,23 +82,29 @@ void playSong() {
     flute.baseFreq = Frequency.ofPitch(melody[i]).asHz();
     // flute.baseFreq = Frequency.ofPitch(pitch).asHz();
 
-    flute.harmonics = new float[] { 0.9, 1.0, 0.05, 0.01, 0.002 };
-    flute.cutoff = 950.0;
+    // 基音を最強にして倍音を弱めると、澄んだ透明感のある音になる
+    flute.harmonics = new float[] { 1.0, 0.35, 0.12, 0.03, 0.01 };
+    // カットオフを上げて倍音の高域を通す（950だと最高音A5=880Hzの倍音がほぼ全部削れてこもる）
+    flute.cutoff = 4000.0;
     flute.res = 0.0;
     flute.filterMode = 0;
 
     // amplitudes[i] を使って、音ごとの強弱を変える
     flute.vol = amplitudes[i];
 
-    //flute.noiseVol = amplitudes[i] * 0.05;
+    // 息ノイズをごく薄く混ぜて空気感を出す（音量に比例させる）
+    flute.noiseVol = amplitudes[i] * 0.04;
 
-    flute.atk = 0.02;
+    // 立ち上がりを緩めて息を吹き込むような柔らかい入りにする
+    flute.atk = 0.06;
     flute.dec = 0.5;
     flute.sus = 0.7;
-    flute.rel = 0.1;
+    // 余韻を少し長めに残す
+    flute.rel = 0.25;
 
-    flute.vibratoRate  = 8.0;
-    flute.vibratoDepth = 4.0;
+    // ビブラートは遅く浅くして上品な揺れにする
+    flute.vibratoRate  = 5.5;
+    flute.vibratoDepth = 2.0;
 
     out.playNote(
       startTime[i],

@@ -22,6 +22,9 @@ class InstrumentConfig {
   // ↓ 追加
   float vibratoRate  = 0.0; // 揺れる速さ (Hz) 0で無効
   float vibratoDepth = 0.0; // 揺れ幅 (Hz)
+
+  // ↓ 追加：息ノイズ（フルートの空気感を出す）0で無効
+  float noiseVol = 0.0;
 }
 
 // 楽器モジュール (クラス) の設計図
@@ -39,6 +42,7 @@ class InstrumentModule implements Instrument {
   // 音の立ち上がり、減衰、持続、余韻を制御するADSR
   ADSR _adsr;
   Oscil _vibrato; // ← 追加
+  Noise _noise;   // ← 追加：息ノイズ用のノイズ生成器
 
 
   // 波形を複数組み合わせる版のコンストラクタ
@@ -95,6 +99,14 @@ class InstrumentModule implements Instrument {
         // 次のOscilを配列に入れるため、番号を進める
         index++;
       }
+    }
+
+    // ↓ 追加：息ノイズ
+    // ホワイトノイズをごく薄くSummerに混ぜて、フルートの「息の空気感」を出す
+    // Summerに混ぜることで、後段のフィルターとADSRも音程成分と一緒にかかる
+    if (config.noiseVol > 0) {
+      _noise = new Noise(config.noiseVol, Noise.Tint.WHITE);
+      _noise.patch(_summer);
     }
 
     // フィルターを作る
