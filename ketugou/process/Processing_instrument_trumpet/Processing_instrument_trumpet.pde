@@ -97,7 +97,7 @@ void setup(){
   updateLayout();
   font = createFont("YuMin-Medium", 42, true);
   textFont(font);
-  myPort = new Serial(this, "dev/tty.usbmodem48CA4359FD002", 115200);    //シリアル通信の設定(""にはArduinoのポート番号を入力)
+  myPort = new Serial(this, "", 115200);    //シリアル通信の設定(""にはArduinoのポート番号を入力)
   minim = new Minim(this);
   //out = minim.getLineOut();
   //-----
@@ -327,7 +327,7 @@ void readNote() {
   int index = myPort.read() & 0xFF; //  インデックスを受信
   if (!waitForData(1)) return;
   int namelen = myPort.read() & 0xFF;
-  println(namelen);
+  //println(namelen);
   
   if (!waitForData(namelen)) return;
   byte[] nameBuf = myPort.readBytes(namelen);
@@ -344,7 +344,7 @@ void readNote() {
   ByteBuffer bb = ByteBuffer.wrap(ampBuf);
   bb.order(ByteOrder.LITTLE_ENDIAN);
   float amp = bb.getFloat();
-  println("amplitude" + amp);
+  //println("amplitude" + amp);
     
   InstrumentConfig trumpet = new InstrumentConfig();    //閾値は各楽器のパラメータによって変更してください
     trumpet.out = out;
@@ -746,6 +746,5 @@ void keyPressed() {
      myPort.write(0xDD);
      println("start!");
      myPort.clear();
-     draw();
   }
 }
