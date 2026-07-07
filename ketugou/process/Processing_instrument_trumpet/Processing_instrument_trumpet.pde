@@ -160,6 +160,7 @@ void draw() {
   
   updateKeyboard();
   drawKeyboard();
+  drawBPM();
   //---
 }
 
@@ -738,7 +739,19 @@ void drawKeyboard() {
   }
 }
 
+void drawBPM() {
 
+  fill(255);
+
+  textAlign(CENTER, CENTER);
+  textSize(height * 0.035);
+
+  text(
+    "BPM : " + int(tempo),
+    width / 2,
+    height * 0.06
+  );
+}
 void keyPressed() {
   if (key == ENTER || key == RETURN){
       fft = new FFT(out.bufferSize(), out.sampleRate());
