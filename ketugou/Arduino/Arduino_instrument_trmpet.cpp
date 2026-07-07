@@ -42,8 +42,8 @@ unsigned long prevMillis = 0; // 前回のLED点滅切り替え時刻
 bool ledOn = false;           // LEDのON/OFF状態
 LEDmodule led1(3);            // ピン3番に接続されたLED
 
-const char ssid[] = "WiFi_bro_colstra"; // Wi-Fiネットワークの名称
-const char pass[] = "wf215nt109rt";     // Wi-Fiのパスワード
+const char ssid[] = "Buffalo-2G-1710"; // Wi-Fiネットワークの名称
+const char pass[] = "g3b5ks5tuk5fm";     // Wi-Fiのパスワード
 
 WiFiUDP udp;
 
