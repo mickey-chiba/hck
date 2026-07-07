@@ -132,6 +132,7 @@ void setup(){
     year(), month(), day(), hour(), minute(), second());
   jitterLog = createWriter(jitterLogName);   // スケッチフォルダ内に作成される
   jitterLog.println("actual_ms,expected_ms,jitter_ms,bpm");  // CSVヘッダー
+  jitterLog.flush();  // 強制終了されてもヘッダーだけは残るよう即時書き込み
   jitterValues = new FloatList();
 
   if (myPort != null) {
