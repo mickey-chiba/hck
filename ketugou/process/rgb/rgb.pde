@@ -9,13 +9,13 @@ DatagramSocket udpSocket;
 
 String broadcastIP = "192.168.11.255";
 int port = 4286;
-long lastSync = 0;  //送る頻度を示す時間
+long lastSync = 0;  
 
 Serial myPort;
 color myColor = color(255);
-long colorChangeTime = 0;  // 先頭に追加
+long colorChangeTime = 0;  
 
-//BPM決定用（ベース×0.5, 0.75, 1.0, 1.25, 1.5, 2.0）
+
 float baseBPM      = 40.0;
 float currentBPM   = 60.0;
 float[] multipliers = { 1.0, 1.325, 1.65, 1.975, 2.3, 2.625 };

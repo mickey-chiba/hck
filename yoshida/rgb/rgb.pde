@@ -7,23 +7,23 @@ import java.net.InetAddress;
 
 DatagramSocket udpSocket;
 
-String broadcastIP = "192.168.10.255";
+String broadcastIP = "192.168.11.255";
 int port = 4286;
-long lastSync = 0;  //送る頻度を示す時間
+long lastSync = 0;  
 
 Serial myPort;
 color myColor = color(255);
-long colorChangeTime = 0;  // 先頭に追加
+long colorChangeTime = 0;  
 
-//BPM決定用（ベース×0.5, 0.75, 1.0, 1.25, 1.5, 2.0）
+
 float baseBPM      = 40.0;
 float currentBPM   = 60.0;
 float[] multipliers = { 1.0, 1.325, 1.65, 1.975, 2.3, 2.625 };
 
-// 【変更①】実測値に更新
+// 実測値に更新
 float[] targetHues  = { 0.006, 0.032, 0.084, 0.22, 0.662, 0.01 };
 
-// 【変更②】ホワイトバランス補正係数を追加
+// ホワイトバランス補正係数を追加
 float WB_R = 1.0;
 float WB_G = 1.4;
 float WB_B = 2.429;
@@ -53,13 +53,13 @@ void setup() {
 }
 
 void draw() {
-  if (millis() - lastSync > 80) {    //※新規追加
+  if (millis() - lastSync > 80) {    
     sendSync();
     lastSync = millis();
   }
   colorMode(RGB, 255);
-  background(0);  // 背景をグレーに
-  fill(255, 0, 0);  // テキストを赤に
+  background(0);  
+  fill(255, 0, 0);  
   textSize(50);
   text("BPM: " + currentBPM, 20, 100);
 }
@@ -87,7 +87,7 @@ void sendFloat(float value) {
     e.printStackTrace();
   }
 }
-void sendSync() {      //※新規追加関数(基準時刻を送信する処理)
+void sendSync() {      //基準時刻を送信する処理
 
   try {
 
@@ -113,18 +113,17 @@ void sendSync() {      //※新規追加関数(基準時刻を送信する処理
 
 void serialEvent(Serial myPort) {
   long start = millis();
-  //println("serialEvent呼ばれた"); 
+
   String received = myPort.readStringUntil('\n');
-  //println("受信生データ: [" + received + "]");  // []で囲んで空白や改行を可視化 
+
   if (received != null) {
     received = trim(received);
-    if (received.length() == 0) {  // ←追加
-    myPort.write('A');
+    if (received.length() == 0) {  
     return;
     }
-    //println("trim後: [" + received + "]");  // trim後も確認
+
     int sensorColor[] = int(split(received, ','));
-    //println("分割数: " + sensorColor.length);  // 分割数を確認
+
     if (sensorColor.length == 3) {
       int red   = sensorColor[0];
       int green = sensorColor[1];
@@ -134,7 +133,7 @@ void serialEvent(Serial myPort) {
       float gLin = pow(green / 255.0, 2.2);
       float bLin = pow(blue  / 255.0, 2.2);
 
-      // 【変更③】ホワイトバランス補正を追加
+      // ホワイトバランス補正
       rLin = min(rLin * WB_R, 1.0);
       gLin = min(gLin * WB_G, 1.0);
       bLin = min(bLin * WB_B, 1.0);
@@ -152,7 +151,7 @@ void serialEvent(Serial myPort) {
       }
 
 
-      // 第1段階：赤・橙をR/G比で判定
+      // 赤・橙をR/G比で判定
       if (bestIndex == 0 || bestIndex == 1) {
       float rgRatio = (float)red / green;
       if (rgRatio > 3.0) {
@@ -162,7 +161,7 @@ void serialEvent(Serial myPort) {
       }
       }
 
-      // 第2段階：橙・紫をB/G比で判定
+      // 橙・紫をB/G比で判定
       if (bestIndex == 1 || bestIndex == 5) {
       float bgRatio = (float)blue / green;
       if (bgRatio > 0.60) {
@@ -208,8 +207,7 @@ void serialEvent(Serial myPort) {
         println("BPM更新: " + currentBPM + "  応答時間: " + elapsed + "ms");
         colorChangeTime = millis(); 
         }
-      
-      //println("Hue: " + h + "  bestIndex: " + bestIndex + "  consecutiveCount: " + consecutiveCount);
+
 
       colorMode(RGB, 255);
       myColor = color(red, green, blue);
