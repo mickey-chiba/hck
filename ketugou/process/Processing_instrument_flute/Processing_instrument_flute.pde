@@ -31,6 +31,7 @@ int fftH;
 
 float waveCenter;
 float waveAmp;
+long[] noteOnReceived = new long[100];
 // ===============
 
 // ===== 歌詞 =====
@@ -93,11 +94,12 @@ class NoteJob {
 }
 
 void setup(){
-  size(1100, 1000);
+  //size(1100, 800);
+  fullScreen();
   updateLayout();
   font = createFont("YuMin-Medium", 42, true);
   textFont(font);
-  myPort = new Serial(this, "", 115200);    //シリアル通信の設定(""にはArduinoのポート番号を入力)
+  myPort = new Serial(this, "/dev/tty.usbmodem34B7DA6365942", 115200);    //シリアル通信の設定(""にはArduinoのポート番号を入力)
   minim = new Minim(this);
   //out = minim.getLineOut();
   //-----
@@ -380,6 +382,9 @@ void readNote() {
     try {
     //  NOTE_ON：meloinstrumentを生成してnoteOn()を直接呼ぶ
     inst.noteOn(0); // Arduinoがタイミングを管理するためdurは0でOK
+    long now = millis();
+    noteOnReceived[index] = now;
+    println(" melody" + noteName + " NOTE_ON" + index + " t=" + now);
     activeNotes[index] = new NoteJob(inst, noteName);
     //n++;
     println("NOTE_ON: " + index);

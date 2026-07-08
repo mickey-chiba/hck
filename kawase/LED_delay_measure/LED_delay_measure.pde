@@ -31,6 +31,7 @@ int fftH;
 
 float waveCenter;
 float waveAmp;
+long[] noteOnReceived = new long[100];
 // ===============
 
 // ===== 歌詞 =====
@@ -51,8 +52,8 @@ float lyricProgress = 0;
 
 //---鍵盤
 String[] pianoKeys = {
-  "C4","D4","E4","F4",
-  "G4","A4","B4","C5"
+  "C5","D5","E5","F5",
+  "G5","A5","B5","C6"
 };
 String[] pianoLabels = {
   "ド","レ","ミ","ファ",
@@ -107,14 +108,14 @@ class NoteJob {
 }
 
 void setup(){
-  size(1100, 1000);
+  size(1100, 800);
   updateLayout();
   font = createFont("YuMin-Medium", 42, true);
   textFont(font);
   // シリアル通信の設定(""にはArduinoのポート番号を入力)
   // Arduino未接続でもジッタ計測のテストができるよう、失敗しても止まらずに続行する
   try {
-    myPort = new Serial(this, "dev/tty.usbmodem48CA4359FD002", 115200);
+    myPort = new Serial(this, "/dev/tty.usbmodem34B7DA6365942", 115200);
   } catch (Exception e) {  // 例外処理: ポートが開けない場合はnullのまま進む
     myPort = null;
     println("NO SERIAL PORT (test mode: press T to set BPM 120)");
@@ -527,6 +528,9 @@ void readNote() {
     try {
     //  NOTE_ON：meloinstrumentを生成してnoteOn()を直接呼ぶ
     inst.noteOn(0); // Arduinoがタイミングを管理するためdurは0でOK
+    long now = millis();
+    noteOnReceived[index] = now;
+    println(" melody" + noteName + " NOTE_ON" + index + " t=" + now);
     activeNotes[index] = new NoteJob(inst, noteName);
     //n++;
     println("NOTE_ON: " + index);

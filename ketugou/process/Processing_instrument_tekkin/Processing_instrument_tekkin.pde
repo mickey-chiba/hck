@@ -486,7 +486,9 @@ class InstrumentModule implements Instrument {
       for (int i = 0; i < harmonics.length; i++) {
 
         // 基音の周波数に、1倍、2倍、3倍...をかけて倍音の周波数を作る
-        float freq = baseFreq * (i + 1);
+        float[] partials = {1.0,2.6,5.1,8.3,12.0};
+
+        float freq = baseFreq * partials[i];
 
         // 倍音ごとの音量を決める
         // 複数波形を足すと音量が大きくなりすぎるので、波形数で割る

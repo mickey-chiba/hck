@@ -83,7 +83,7 @@ void playSong() {
     // flute.baseFreq = Frequency.ofPitch(pitch).asHz();
 
     // 基音を最強にして倍音を弱めると、澄んだ透明感のある音になる
-    flute.harmonics = new float[] { 1.0, 0.35, 0.12, 0.03, 0.01 };
+    flute.harmonics = new float[] { 1.0, 0.4, 0.2, 0.03, 0.01 };
     // カットオフを上げて倍音の高域を通す（950だと最高音A5=880Hzの倍音がほぼ全部削れてこもる）
     flute.cutoff = 4000.0;
     flute.res = 0.0;

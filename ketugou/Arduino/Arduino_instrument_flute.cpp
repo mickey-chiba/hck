@@ -51,7 +51,7 @@ const int port = 4286; // ポート番号
 
 float currentValue = 0.0;         // 現在のBPMを入れておく変数
 float receivedValue = 0.0;        // 受信したBPMを入れておく変数
-float number = 1.0;               // 輪唱の拍数を定義する変数
+float number = 2.0;               // 輪唱の拍数を定義する変数
 float preValue = 7000.0;          // BPMを受信した際の条件式に使用する変数
 bool start = false;               // 開始したかを判別する変数
 float musicalTime = 0;            // 音の鳴らす時間を定める時間の変数
