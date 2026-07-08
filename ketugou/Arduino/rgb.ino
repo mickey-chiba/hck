@@ -40,5 +40,5 @@ void loop() {
     Serial.println(bb);
   }
 
-  delay(5); // 軽い安定化（削ってもOK）
+  delay(5); 
 }
