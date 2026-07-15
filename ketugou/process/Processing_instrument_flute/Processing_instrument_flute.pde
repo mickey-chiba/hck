@@ -349,13 +349,13 @@ void readNote() {
   float amp = bb.getFloat();
   //println("amplitude" + amp);
     
-  InstrumentConfig flute = new InstrumentConfig();
+   InstrumentConfig flute = new InstrumentConfig();
 
     flute.out = out;
     flute.waves = new String[] { "SINE", "SINE", "SINE", "SINE", "SINE" };
 
     // melody[i] の音階名を周波数に変換して、この音の基音にする
-    flute.baseFreq = Frequency.ofPitch(noteName).asHz();
+    flute.baseFreq = Frequency.ofPitch(melody[i]).asHz();
     // flute.baseFreq = Frequency.ofPitch(pitch).asHz();
 
     flute.harmonics = new float[] { 0.9, 1.0, 0.05, 0.01, 0.002 };
@@ -363,8 +363,8 @@ void readNote() {
     flute.res = 0.0;
     flute.filterMode = 0;
 
-    // amp を使って、音ごとの強弱を変える
-    flute.vol = amp;
+    // amplitudes[i] を使って、音ごとの強弱を変える
+    flute.vol = amplitudes[i];
 
     //flute.noiseVol = amplitudes[i] * 0.05;
 
